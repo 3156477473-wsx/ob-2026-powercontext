@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import json
 import logging
 import os
@@ -656,6 +658,30 @@ async def open_builtin_runtime(
         runtime.artifact_processing_supervisor = await resources.enter_async_context(
             _open_artifact_processing_supervisor(config, contexts, processing_bindings, tracing=tracing)
         )
+
+        count_trigger_task: asyncio.Task[None] | None = None
+        if config.runtime.artifact_processing_role != "api" and (
+            config.runtime.memory_source_count_threshold is not None
+            or config.runtime.topic_memory_source_count_threshold is not None
+        ):
+            count_trigger_path = _sqlite_database_path(config)
+            if count_trigger_path is not None:
+                count_trigger_task = asyncio.create_task(
+                    _run_count_triggers(runtime, count_trigger_path, config)
+                )
+
+            async def _stop_count_triggers() -> None:
+                if count_trigger_task is None:
+                    return
+                count_trigger_task.cancel()
+                try:
+                    await count_trigger_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+
+            resources.push_async_callback(_stop_count_triggers)
         contexts.profiles.operation_context = runtime._operation
         if config.handoff_report.enabled:
             runtime.handoff_report = HandoffReportApplication(
@@ -667,6 +693,109 @@ async def open_builtin_runtime(
         _require_decision_backend(config.runtime, configured_decision)
         yield runtime
 
+
+
+
+
+_COUNT_TRIGGER_POLL_SECONDS = 0.2
+_COUNT_TRIGGER_SETTLE_SECONDS = 30.0
+
+
+def _count_trigger_families(config: BuiltinConfig) -> tuple[tuple[str, str, int], ...]:
+    families: list[tuple[str, str, int]] = []
+    if config.runtime.memory_source_count_threshold is not None:
+        families.append(("memory", "memory-source-window", int(config.runtime.memory_source_count_threshold)))
+    if config.runtime.topic_memory_source_count_threshold is not None:
+        families.append(
+            ("topic-memory", "topic-memory-source-window", int(config.runtime.topic_memory_source_count_threshold))
+        )
+    return tuple(families)
+
+
+def _sqlite_database_path(config: BuiltinConfig) -> str | None:
+    url = getattr(config.database, "url", "") or ""
+    if "///" not in url:
+        return None
+    path = url.split("///", 1)[1]
+    return None if not path or path == ":memory:" else path
+
+
+def _read_pending_counts(path: str, binding_name: str) -> dict[str, int]:
+    import sqlite3
+
+    connection = sqlite3.connect(path, timeout=0.5)
+    try:
+        connection.execute("PRAGMA query_only = ON")
+        rows = connection.execute(
+            "SELECT s.scope_id, COUNT(*)"
+            " FROM pc_sources AS s"
+            " LEFT JOIN pc_source_cursors AS c"
+            "   ON c.scope_id = s.scope_id AND c.binding_name = ?"
+            " WHERE s.journal_position > COALESCE(json_extract(c.cursor, '$.sequence'), 0)"
+            " GROUP BY s.scope_id",
+            (binding_name,),
+        ).fetchall()
+    finally:
+        connection.close()
+    return {str(scope): int(pending) for scope, pending in rows}
+
+
+async def _pending_counts(path: str, binding_name: str) -> dict[str, int]:
+    return await asyncio.to_thread(_read_pending_counts, path, binding_name)
+
+
+async def _run_count_triggers(runtime: object, path: str, config: BuiltinConfig) -> None:
+    loop = asyncio.get_running_loop()
+    families = _count_trigger_families(config)
+    in_flight: set[tuple[str, str]] = set()
+    while True:
+        try:
+            for family, binding_name, threshold in families:
+                counts = await _pending_counts(path, binding_name)
+                for scope_id, pending in counts.items():
+                    key = (family, scope_id)
+                    if pending < threshold or key in in_flight:
+                        continue
+                    in_flight.add(key)
+                    asyncio.create_task(
+                        _trigger_count_family(
+                            runtime, path, family, binding_name, threshold, scope_id, in_flight, loop
+                        )
+                    )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        await asyncio.sleep(_COUNT_TRIGGER_POLL_SECONDS)
+
+
+async def _trigger_count_family(
+    runtime: object,
+    path: str,
+    family: str,
+    binding_name: str,
+    threshold: int,
+    scope_id: str,
+    in_flight: set[tuple[str, str]],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    try:
+        if family == "memory":
+            await runtime.memory.for_scope(scope_id).flush()
+        else:
+            await runtime.topic_memory.for_scope(scope_id).flush()
+            deadline = loop.time() + _COUNT_TRIGGER_SETTLE_SECONDS
+            while loop.time() < deadline:
+                await asyncio.sleep(_COUNT_TRIGGER_POLL_SECONDS)
+                counts = await _pending_counts(path, binding_name)
+                if counts.get(scope_id, 0) < threshold:
+                    break
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        await asyncio.sleep(0.5)
+    finally:
+        in_flight.discard((family, scope_id))
 
 def _validate_processing_source_registry(
     config: BuiltinConfig,
