@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import io
 import re
 from typing import TYPE_CHECKING
@@ -193,10 +194,11 @@ async def search_pdf_pages(memory: object, question: str, limit: int = 20) -> tu
     if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
         raise ValueError("limit must be a positive integer")
 
-    scores: dict[tuple[str, int], float] = {}
-    citations: dict[tuple[str, int], MemoryCitation] = {}
-    for weight, query in _search_queries(question):
-        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit, 20)))
+    terms = _question_terms(question)
+    candidates: dict[tuple[str, int], dict[str, object]] = {}
+    order: dict[tuple[str, int], int] = {}
+    for _weight, query in _search_queries(question):
+        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 3, 60)))
         for rank, hit in enumerate(page.hits):
             citation = MemoryCitation(
                 memory_ref=hit.memory_ref,
@@ -206,31 +208,60 @@ async def search_pdf_pages(memory: object, question: str, limit: int = 20) -> tu
             entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
             for reference in entry.sources:
                 location = _page_location(reference.source_id)
-                if location is None:
+                if location is None or location in candidates:
                     continue
-                scores[location] = scores.get(location, 0.0) + weight / (rank + 1)
-                citations.setdefault(location, citation)
-    ordered = sorted(scores.items(), key=lambda item: item[1], reverse=True)
-    return tuple(citations[location] for location, _score in ordered[:limit])
+                candidates[location] = {"citation": citation, "text": entry.text}
+                order[location] = rank
+
+    if not candidates and not terms:
+        return ()
+    lowered = {location: str(item["text"]).casefold() for location, item in candidates.items()}
+    total = max(1, len(lowered))
+    weights: dict[str, float] = {}
+    for term in terms:
+        frequency = sum(1 for text in lowered.values() if term in text)
+        weights[term] = 1.0 + math.log(1.0 + total / (1.0 + frequency))
+    bigrams = tuple(zip(terms, terms[1:]))
+
+    scored: list[tuple[float, int, tuple[str, int]]] = []
+    for location, text in lowered.items():
+        score = 0.0
+        matched = 0
+        for term in terms:
+            if term in text:
+                score += weights[term]
+                matched += 1
+        if matched == 0:
+            continue
+        score += 2.0 * sum(1 for left, right in bigrams if f"{left} {right}" in text)
+        score += 1.5 * (matched / max(1, len(terms)))
+        scored.append((score, order.get(location, 10_000), location))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return tuple(candidates[location]["citation"] for _score, _rank, location in scored[:limit])
 
 
-def _search_queries(question: str) -> tuple[tuple[float, str], ...]:
-    tokens: list[str] = []
+def _question_terms(question: str) -> tuple[str, ...]:
+    terms: list[str] = []
     seen: set[str] = set()
     for token in _TOKEN.findall(question.casefold()):
         if token in _STOP_WORDS or token in seen or len(token) < 2:
             continue
         seen.add(token)
-        tokens.append(token)
-    if not tokens:
+        terms.append(token)
+    return tuple(terms)
+
+
+def _search_queries(question: str) -> tuple[tuple[float, str], ...]:
+    terms = _question_terms(question)
+    if not terms:
         return ((1.0, question),)
-    queries: list[tuple[float, str]] = [(1.0, " ".join(tokens))]
-    # Pairwise windows keep recall high when a page cannot contain every question term.
-    if len(tokens) > 2:
-        for index in range(len(tokens) - 1):
-            queries.append((0.6, f"{tokens[index]} {tokens[index + 1]}"))
-    elif len(tokens) == 2:
-        queries.append((0.6, tokens[0]))
+    queries: list[tuple[float, str]] = [(1.0, " ".join(terms))]
+    for index in range(len(terms) - 1):
+        queries.append((0.7, f"{terms[index]} {terms[index + 1]}"))
+    # Rare/long terms are the most selective single-term probes.
+    singles = sorted(terms, key=len, reverse=True)[:6]
+    for term in singles:
+        queries.append((0.5, term))
     return tuple(queries)
 
 
