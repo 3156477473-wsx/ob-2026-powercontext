@@ -171,7 +171,8 @@ export default function App(): JSX.Element {
     setStatus({ tone: 'busy', message: '正在对比 INT8 / FP32…' });
     const rows: BenchRow[] = [];
     const samples = splitDocuments(SAMPLE_DOCS).slice(0, 6);
-    for (const candidate of ['q8', 'fp32'] as Dtype[]) {
+    const candidates: Dtype[] = device === 'webgpu' ? ['q8', 'fp16', 'fp32'] : ['q8', 'fp32'];
+    for (const candidate of candidates) {
       try {
         const elapsed = await embedderRef.current.load({
           modelId,
