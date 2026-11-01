@@ -2592,6 +2592,28 @@ class ScopedMemoryApplication:
                 entry=_entry_record(updated, retired),
             )
 
+    async def reactivate(self, citation: MemoryCitation, /) -> MemoryMutationResult:
+        """Restore one inactive Memory entry without creating a new body version."""
+
+        async with self._runtime._context(
+            self.scope_id,
+            embedding_purpose=ModelUsagePurpose.MEMORY_INDEXING,
+        ) as context:
+            async with self._runtime._locked(self.scope_id):
+                service = context.artifacts.memory
+                current, entry = await _current_citation(
+                    service,
+                    context.artifacts.memory_artifact_id,
+                    citation,
+                )
+                updated = await service.reactivate(current, entries=(entry,), reason="source lifecycle")
+            restored = next(item for item in await service.entries(updated) if item.entry_id == entry.entry_id)
+            return MemoryMutationResult(
+                previous_revision=current.revision,
+                memory_ref=updated.as_ref(),
+                entry=_entry_record(updated, restored),
+            )
+
     async def changes(self, *, since_revision: int | None = None) -> MemoryChangesPage:
         async with self._runtime._context(self.scope_id) as context:
             service = context.artifacts.memory
@@ -2706,6 +2728,18 @@ class ScopedTopicMemoryApplication:
                         "unit": "topic-memory",
                     },
                 )
+        lifecycle = getattr(self._runtime, "lifecycle", None)
+        if lifecycle is not None and result.hits:
+            inactive = await lifecycle.inactive_topic_artifact_ids(self.scope_id)
+            if inactive:
+                result = result.model_copy(
+                    update={
+                        "hits": tuple(
+                            hit for hit in result.hits if hit.artifact_ref.artifact_id not in inactive
+                        )
+                    }
+                )
+
         return result
 
     async def _search_with_embedding(

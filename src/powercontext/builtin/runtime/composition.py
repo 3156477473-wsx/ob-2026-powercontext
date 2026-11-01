@@ -682,6 +682,10 @@ async def open_builtin_runtime(
                     pass
 
             resources.push_async_callback(_stop_count_triggers)
+        from powercontext.builtin.runtime.source_lifecycle import LifecycleApplication
+
+        runtime.lifecycle = LifecycleApplication(runtime, contexts.database)
+        await runtime.lifecycle.initialize()
         contexts.profiles.operation_context = runtime._operation
         if config.handoff_report.enabled:
             runtime.handoff_report = HandoffReportApplication(
