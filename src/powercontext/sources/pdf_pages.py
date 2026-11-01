@@ -183,61 +183,127 @@ class PDFPageTextEvidenceProjection:
         )
 
 
-async def search_pdf_pages(memory: object, question: str, limit: int = 20) -> tuple[MemoryCitation, ...]:
-    """Return up to ``limit`` distinct evidence-page citations from the scoped Memory."""
+_PAGE_TYPE_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "balance": (re.compile(r"consolidated balance sheets?"), re.compile(r"\bbalance sheets?\b")),
+    "income": (
+        re.compile(r"consolidated statements? of (income|operations|earnings)"),
+        re.compile(r"\bstatements? of (income|operations|earnings)\b"),
+        re.compile(r"summary of financial performance"),
+        re.compile(r"financial highlights"),
+    ),
+    "cashflow": (re.compile(r"statements? of cash flows"),),
+    "segment": (
+        re.compile(r"by business segment"),
+        re.compile(r"segment data"),
+        re.compile(r"geographic operations"),
+        re.compile(r"segment information"),
+    ),
+    "legal": (re.compile(r"legal proceedings"),),
+}
 
-    from powercontext.builtin.artifacts.memory.models import MemoryCitation
-    from powercontext.builtin.runtime import GetMemoryEntryRequest, SearchMemoryRequest
+_INTENT_PATTERNS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "balance": (
+        re.compile(r"quick ratio"),
+        re.compile(r"current ratio"),
+        re.compile(r"inventory"),
+        re.compile(r"balance sheet"),
+        re.compile(r"liabilit"),
+        re.compile(r"total assets"),
+        re.compile(r"return on assets"),
+        re.compile(r"\broa\b"),
+    ),
+    "income": (
+        re.compile(r"gross margin"),
+        re.compile(r"operating margin"),
+        re.compile(r"net margin"),
+        re.compile(r"\bmargin\b"),
+        re.compile(r"revenue"),
+        re.compile(r"net sales"),
+        re.compile(r"\bsales\b"),
+        re.compile(r"earnings"),
+        re.compile(r"income statement"),
+        re.compile(r"operating income"),
+        re.compile(r"\beps\b"),
+        re.compile(r"profit"),
+        re.compile(r"return on assets"),
+        re.compile(r"\broa\b"),
+        re.compile(r"ebitda"),
+        re.compile(r"tax"),
+        re.compile(r"provision for income"),
+    ),
+    "cashflow": (
+        re.compile(r"ebitda"),
+        re.compile(r"cash flow"),
+        re.compile(r"capex"),
+        re.compile(r"capital expenditure"),
+        re.compile(r"free cash"),
+        re.compile(r"capital[- ]intensive"),
+        re.compile(r"depreciation"),
+        re.compile(r"amortization"),
+        re.compile(r"dividend"),
+        re.compile(r"repurchase"),
+    ),
+    "segment": (
+        re.compile(r"geograph"),
+        re.compile(r"\bregion"),
+        re.compile(r"segment"),
+        re.compile(r"business unit"),
+        re.compile(r"acquisition"),
+        re.compile(r"m&a"),
+        re.compile(r"merger"),
+        re.compile(r"divestiture"),
+        re.compile(r"product categor"),
+        re.compile(r"service categor"),
+    ),
+    "legal": (
+        re.compile(r"legal"),
+        re.compile(r"litigation"),
+        re.compile(r"lawsuit"),
+        re.compile(r"battle"),
+        re.compile(r"proceeding"),
+        re.compile(r"claim"),
+        re.compile(r"investigation"),
+        re.compile(r"regulatory"),
+    ),
+}
 
-    if not isinstance(question, str) or not question.strip():
-        raise ValueError("question must be a non-empty string")
-    if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
-        raise ValueError("limit must be a positive integer")
+_TYPE_QUERIES: dict[str, tuple[str, ...]] = {
+    "balance": ("consolidated balance sheets",),
+    "income": (
+        "summary of financial performance",
+        "consolidated statements of income",
+        "consolidated statements of operations",
+        "consolidated statement of earnings",
+    ),
+    "cashflow": ("consolidated statements of cash flows",),
+    "segment": ("business segment", "geographic operations"),
+    "legal": ("legal proceedings",),
+}
 
-    terms = _question_terms(question)
-    candidates: dict[tuple[str, int], dict[str, object]] = {}
-    order: dict[tuple[str, int], int] = {}
-    for _weight, query in _search_queries(question):
-        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=max(limit * 3, 60)))
-        for rank, hit in enumerate(page.hits):
-            citation = MemoryCitation(
-                memory_ref=hit.memory_ref,
-                entry_id=hit.entry_id,
-                entry_version_id=hit.entry_version_id,
-            )
-            entry = (await memory.get(GetMemoryEntryRequest(citation=citation))).entry
-            for reference in entry.sources:
-                location = _page_location(reference.source_id)
-                if location is None or location in candidates:
-                    continue
-                candidates[location] = {"citation": citation, "text": entry.text}
-                order[location] = rank
+_STRUCTURE_WEIGHT = 0.8
+_SIBLING_WEIGHT = 0.3
+_SCORE_SCALE = 5.0
+_STATEMENT_TYPES = frozenset({"balance", "income", "cashflow"})
 
-    if not candidates and not terms:
-        return ()
-    lowered = {location: str(item["text"]).casefold() for location, item in candidates.items()}
-    total = max(1, len(lowered))
-    weights: dict[str, float] = {}
-    for term in terms:
-        frequency = sum(1 for text in lowered.values() if term in text)
-        weights[term] = 1.0 + math.log(1.0 + total / (1.0 + frequency))
-    bigrams = tuple(zip(terms, terms[1:]))
 
-    scored: list[tuple[float, int, tuple[str, int]]] = []
-    for location, text in lowered.items():
-        score = 0.0
-        matched = 0
-        for term in terms:
-            if term in text:
-                score += weights[term]
-                matched += 1
-        if matched == 0:
-            continue
-        score += 2.0 * sum(1 for left, right in bigrams if f"{left} {right}" in text)
-        score += 1.5 * (matched / max(1, len(terms)))
-        scored.append((score, order.get(location, 10_000), location))
-    scored.sort(key=lambda item: (-item[0], item[1]))
-    return tuple(candidates[location]["citation"] for _score, _rank, location in scored[:limit])
+def _wanted_page_types(question: str) -> tuple[str, ...]:
+    lowered = question.casefold()
+    wanted = [
+        name
+        for name, patterns in _INTENT_PATTERNS.items()
+        if any(pattern.search(lowered) for pattern in patterns)
+    ]
+    return tuple(wanted)
+
+
+def _page_types(text: str) -> frozenset[str]:
+    head = re.sub(r"[^a-z0-9]+", " ", text[:600].casefold())
+    found = {name for name, patterns in _PAGE_TYPE_PATTERNS.items() if any(p.search(head) for p in patterns)}
+    if not found:
+        body = text.casefold()
+        if any(token in body for token in ("legal proceeding", "litigation", "claims and litigation")):
+            found.add("legal")
+    return frozenset(found)
 
 
 def _question_terms(question: str) -> tuple[str, ...]:
@@ -251,18 +317,111 @@ def _question_terms(question: str) -> tuple[str, ...]:
     return tuple(terms)
 
 
-def _search_queries(question: str) -> tuple[tuple[float, str], ...]:
+def _search_query_plan(question: str, wanted: tuple[str, ...]) -> tuple[str, ...]:
     terms = _question_terms(question)
-    if not terms:
-        return ((1.0, question),)
-    queries: list[tuple[float, str]] = [(1.0, " ".join(terms))]
-    for index in range(len(terms) - 1):
-        queries.append((0.7, f"{terms[index]} {terms[index + 1]}"))
-    # Rare/long terms are the most selective single-term probes.
-    singles = sorted(terms, key=len, reverse=True)[:6]
-    for term in singles:
-        queries.append((0.5, term))
-    return tuple(queries)
+    queries: list[str] = []
+    if terms:
+        queries.append(" ".join(terms))
+    for name in wanted:
+        queries.extend(_TYPE_QUERIES.get(name, ()))
+    queries.extend(sorted(terms, key=len, reverse=True)[:3])
+    queries.append("total")
+    return tuple(dict.fromkeys(query for query in queries if query.strip()))
+
+
+def _bm25_scores(documents: list[list[str]], query_terms: list[str]) -> list[float]:
+    total = len(documents)
+    lengths = [len(document) for document in documents]
+    average = sum(lengths) / max(1, total)
+    document_frequency: dict[str, int] = {}
+    counters: list[dict[str, int]] = []
+    for document in documents:
+        counter: dict[str, int] = {}
+        for token in document:
+            counter[token] = counter.get(token, 0) + 1
+        counters.append(counter)
+        for token in counter:
+            document_frequency[token] = document_frequency.get(token, 0) + 1
+    scores: list[float] = []
+    for counter, length in zip(counters, lengths):
+        score = 0.0
+        for term in query_terms:
+            frequency = counter.get(term, 0)
+            if not frequency:
+                continue
+            frequency_in_documents = document_frequency.get(term, 0)
+            inverse = math.log(1.0 + (total - frequency_in_documents + 0.5) / (frequency_in_documents + 0.5))
+            score += inverse * frequency * 2.2 / (frequency + 1.2 * (1 - 0.75 + 0.75 * length / max(1.0, average)))
+        scores.append(score)
+    return scores
+
+
+async def search_pdf_pages(memory: object, question: str, limit: int = 10) -> tuple[MemoryCitation, ...]:
+    """Return up to ``limit`` distinct evidence-page citations from the scoped Memory."""
+
+    from powercontext.builtin.artifacts.memory.models import MemoryCitation
+    from powercontext.builtin.runtime import SearchMemoryRequest
+
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError("question must be a non-empty string")
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+        raise ValueError("limit must be a positive integer")
+
+    terms = _question_terms(question)
+    wanted = _wanted_page_types(question)
+    depth = max(limit * 10, 200)
+    hits: dict[str, object] = {}
+    best_rank: dict[str, int] = {}
+    for query in _search_query_plan(question, wanted):
+        page = await memory.search(SearchMemoryRequest(query=query, mode="fts", limit=depth))
+        for rank, hit in enumerate(page.hits):
+            previous = best_rank.get(hit.entry_id)
+            if previous is not None and previous <= rank:
+                continue
+            hits[hit.entry_id] = hit
+            best_rank[hit.entry_id] = rank
+
+    if not hits:
+        return ()
+
+    entries = list(hits.values())
+    texts = [str(hit.text) for hit in entries]
+    lowered = [text.casefold() for text in texts]
+    tokens = [_tokenize(text) for text in texts]
+    wanted_terms = list(terms)
+    scores = _bm25_scores(tokens, wanted_terms)
+    types = [_page_types(text) for text in texts]
+    bigrams = tuple(zip(wanted_terms, wanted_terms[1:]))
+
+    ranked: list[tuple[float, int, int]] = []
+    for index, (score, text, page_types) in enumerate(zip(scores, lowered, types)):
+        normalised = score / (score + _SCORE_SCALE) if score else 0.0
+        coverage = sum(1 for term in wanted_terms if term in text) / max(1, len(wanted_terms))
+        structure = len(set(wanted) & page_types) / max(1, len(wanted)) if wanted else 0.0
+        sibling = 1.0 if page_types & _STATEMENT_TYPES else 0.0
+        phrase = sum(1 for left, right in bigrams if f"{left} {right}" in text)
+        value = (
+            normalised
+            + _STRUCTURE_WEIGHT * structure
+            + _SIBLING_WEIGHT * sibling
+            + 0.1 * coverage
+            + 0.02 * phrase
+        )
+        ranked.append((value, best_rank[entries[index].entry_id], index))
+    ranked.sort(key=lambda item: (-item[0], item[1]))
+
+    return tuple(
+        MemoryCitation(
+            memory_ref=entries[index].memory_ref,
+            entry_id=entries[index].entry_id,
+            entry_version_id=entries[index].entry_version_id,
+        )
+        for _value, _rank, index in ranked[:limit]
+    )
+
+
+def _tokenize(text: str) -> list[str]:
+    return [token for token in _TOKEN.findall(text.casefold()) if token not in _STOP_WORDS]
 
 
 def _page_location(source_id: str) -> tuple[str, int] | None:
