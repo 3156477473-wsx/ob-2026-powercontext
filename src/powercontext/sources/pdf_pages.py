@@ -306,6 +306,51 @@ def _page_types(text: str) -> frozenset[str]:
     return frozenset(found)
 
 
+def _name_overlap(terms: tuple[str, ...], name: str) -> int:
+    """Count question terms that name this document, tolerating ticker-style short forms."""
+
+    words = _tokenize(name)
+    hits = 0
+    for term in terms:
+        for word in words:
+            if term == word or (len(term) >= 3 and word.startswith(term[:3])) or (
+                len(term) >= 4 and term in word
+            ):
+                hits += 1
+                break
+    return hits
+
+
+def _target_document(
+    documents: list[str],
+    rows: list[tuple[float, float, int, int]],
+    terms: tuple[str, ...],
+) -> str:
+    """Pick the document a question is most likely about when the scope holds several."""
+
+    stats: dict[str, list[float]] = {}
+    counts: dict[str, int] = {}
+    for value, coverage, _rank, index in rows:
+        name = documents[index]
+        counts[name] = counts.get(name, 0) + 1
+        entry = stats.setdefault(name, [0.0, 0.0, 0.0])
+        entry[0] += value
+        entry[1] = max(entry[1], value)
+        entry[2] = max(entry[2], coverage)
+    candidates = [name for name in stats if counts[name] >= 3]
+    if not candidates:
+        return ""
+    return max(
+        candidates,
+        key=lambda name: (
+            _name_overlap(terms, name),
+            stats[name][2],
+            stats[name][1],
+            stats[name][0],
+        ),
+    )
+
+
 def _question_terms(question: str) -> tuple[str, ...]:
     terms: list[str] = []
     seen: set[str] = set()
@@ -369,7 +414,7 @@ async def search_pdf_pages(memory: object, question: str, limit: int = 10) -> tu
 
     terms = _question_terms(question)
     wanted = _wanted_page_types(question)
-    depth = max(limit * 10, 200)
+    depth = max(limit * 25, 500)
     hits: dict[str, object] = {}
     best_rank: dict[str, int] = {}
     for query in _search_query_plan(question, wanted):
@@ -388,17 +433,17 @@ async def search_pdf_pages(memory: object, question: str, limit: int = 10) -> tu
     texts = [str(hit.text) for hit in entries]
     lowered = [text.casefold() for text in texts]
     tokens = [_tokenize(text) for text in texts]
-    wanted_terms = list(terms)
-    scores = _bm25_scores(tokens, wanted_terms)
+    scores = _bm25_scores(tokens, list(terms))
     types = [_page_types(text) for text in texts]
-    bigrams = tuple(zip(wanted_terms, wanted_terms[1:]))
+    documents = [text.split("\n", 1)[0] for text in texts]
+    bigrams = tuple(zip(terms, terms[1:]))
 
-    ranked: list[tuple[float, int, int]] = []
+    rows: list[tuple[float, float, int, int]] = []
     for index, (score, text, page_types) in enumerate(zip(scores, lowered, types)):
         normalised = score / (score + _SCORE_SCALE) if score else 0.0
-        coverage = sum(1 for term in wanted_terms if term in text) / max(1, len(wanted_terms))
+        coverage = sum(1 for term in terms if term in text) / max(1, len(terms))
         structure = len(set(wanted) & page_types) / max(1, len(wanted)) if wanted else 0.0
-        sibling = 1.0 if page_types & _STATEMENT_TYPES else 0.0
+        sibling = 1.0 if wanted and page_types & _STATEMENT_TYPES else 0.0
         phrase = sum(1 for left, right in bigrams if f"{left} {right}" in text)
         value = (
             normalised
@@ -407,16 +452,23 @@ async def search_pdf_pages(memory: object, question: str, limit: int = 10) -> tu
             + 0.1 * coverage
             + 0.02 * phrase
         )
-        ranked.append((value, best_rank[entries[index].entry_id], index))
-    ranked.sort(key=lambda item: (-item[0], item[1]))
+        rows.append((value, coverage, best_rank[entries[index].entry_id], index))
 
+    target = _target_document(documents, rows, terms)
+    ranked = [
+        (0 if not target or documents[index] == target else 1, value, rank, index)
+        for value, _coverage, rank, index in rows
+    ]
+    ranked.sort(key=lambda item: (item[0], -item[1], item[2]))
+
+    chosen = [index for _order, _value, _rank, index in ranked[:limit]]
     return tuple(
         MemoryCitation(
             memory_ref=entries[index].memory_ref,
             entry_id=entries[index].entry_id,
             entry_version_id=entries[index].entry_version_id,
         )
-        for _value, _rank, index in ranked[:limit]
+        for index in chosen
     )
 
 
