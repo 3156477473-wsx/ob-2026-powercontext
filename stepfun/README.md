@@ -34,6 +34,8 @@
 | `docs/acceptance.md` | 验收清单 → 代码位置 → 复现命令 |
 | `docs/benchmark.md` | 已实测的检索耗时与待补的 GPU 数据 |
 | `docs/demo-script.md` | 3–5 分钟录屏脚本 |
+| `docs/design.md` | 架构取舍、单语句理由、RRF 参数、降级与安全边界 |
+| `scripts/start-dev.sh` | 一键自检并启动桥与前端（`--check` 只做自检） |
 
 ## 快速开始
 
@@ -54,6 +56,13 @@ npm install --ignore-scripts   # 跳过 onnxruntime-node 的 Node 二进制下�
 npm run dev          # http://127.0.0.1:5173
 
 # 生产预览：npm run build 之后，Node 桥会自动托管 web/dist，直接访问 http://127.0.0.1:8787
+```
+
+依赖装好后也可以一条命令起全套（会先自检 Node 版本与 seekdb 连通性）：
+
+```bash
+scripts/start-dev.sh          # 桥 :8787 + 前端 :5173
+scripts/start-dev.sh --check  # 只做环境自检
 ```
 
 打开 <http://127.0.0.1:5173>：
