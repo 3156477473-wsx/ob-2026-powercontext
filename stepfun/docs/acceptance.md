@@ -9,7 +9,10 @@
 | seekdb 混合检索，单条语句 | `server/src/store.js` 调 `collection.hybridSearch({ query, knn, rank: { rrf } })`，SDK 生成 `DBMS_HYBRID_SEARCH` 检索 SQL，库内执行一条 `SELECT`（全文 `MATCH ... AGAINST` + HNSW 向量 + RRF） | `npm run smoke` / `node src/http-smoke.mjs` 输出 `CALL DBMS_HYBRID_SEARCH(...)` 与命中 |
 | 检索处理由 seekdb 完成，不客户端拼合 | 桥接层只做参数清洗（去引号/反斜杠/控制字符，截断 512 字符）与结果透传；无候选合并、无二次排序代码 | 审阅 `server/src/store.js` 的 `hybridSearch()` |
 | Node 桥接 | `server/src/index.js`（Express）+ `server/src/store.js`（seekdb SDK），暴露 `/api/health`、`/api/stats`、`/api/documents`、`/api/search` | `cd server && npm start` |
-| 端到端 demo：导入 → 向量化 → 检索 | 页面四个区块：加载模型 → 向量化并写入 seekdb → 混合检索 → 量化性能表 | 按 README「快速开始」操作 |
+| 端到端 demo：导入 → 向量化 → 检索 | 页面四个区块：加载模型 → 向量化并写入 seekdb → 混合检索 → 量化性能表；支持拖拽导入 `.txt/.md/.jsonl/.csv`、示例语料切换（中/英/财报）、TopK 调整、Ctrl+Enter 检索 | 按 README「快速开始」操作 |
+| 可复位演示 | 「重建 collection」调用 `POST /api/reset`（`server/src/store.js` 的 `resetLibrary()`），切换模型维度或重录演示前可清库 | 点「重建 collection」，`/api/health` 的 count 归零 |
+| 命中来源可解释 | 结果卡片标注「向量命中 / 仅关键词命中」，距离为空即只被全文分支召回 | 用纯符号或生僻词做查询，可见「仅关键词命中」 |
+| 设置持久化 | 模型、设备、精度、下载源写入 `localStorage`（`stepfun-rag-settings`），刷新后保持 | 刷新页面观察配置不变 |
 | 性能表格 | 表格含配置、设备、精度、加载耗时、向量化耗时、吞吐（段/秒）、维度 | 点「量化对比」 |
 | 文档 | `README.md`（架构、快速开始、降级策略、环境变量、限制）+ 本文件 | — |
 

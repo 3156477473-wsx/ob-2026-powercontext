@@ -166,6 +166,66 @@ textarea {
   flex: 1;
 }
 
+.row label.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+.row label.inline select,
+.row label.inline input {
+  width: auto;
+  min-width: 96px;
+}
+
+.row label.inline.narrow input {
+  min-width: 64px;
+  width: 64px;
+}
+
+.row label.file {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  font-size: 12px;
+}
+
+.row label.file input {
+  width: auto;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+textarea.drop {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(106, 168, 255, 0.15);
+}
+
+.badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+}
+
+.badge.vec {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.4);
+}
+
+.badge.fts {
+  color: #fcd34d;
+  border-color: rgba(252, 211, 77, 0.4);
+}
+
 .row.spread {
   justify-content: space-between;
   align-items: center;

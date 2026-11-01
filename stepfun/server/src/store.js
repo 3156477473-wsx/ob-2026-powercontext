@@ -93,6 +93,13 @@ export async function collectionInfo() {
   };
 }
 
+export async function resetLibrary() {
+  const target = await connect();
+  await client.deleteCollection(target.name);
+  collection = null;
+  return collectionInfo();
+}
+
 export async function describeCollection() {
   const target = await connect();
   const rows = await client.execute(

@@ -6,7 +6,7 @@ import cors from 'cors';
 import express from 'express';
 
 import { config } from './config.js';
-import { close, collectionInfo, count, hybridSearch, upsertDocuments } from './store.js';
+import { close, collectionInfo, count, hybridSearch, resetLibrary, upsertDocuments } from './store.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const webDist = join(here, '..', '..', 'web', 'dist');
@@ -69,6 +69,14 @@ app.post('/api/documents', async (req, res, next) => {
     });
     const result = await upsertDocuments(prepared);
     res.json({ ok: true, dimension, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/reset', async (_req, res, next) => {
+  try {
+    res.json({ ok: true, ...(await resetLibrary()) });
   } catch (error) {
     next(error);
   }

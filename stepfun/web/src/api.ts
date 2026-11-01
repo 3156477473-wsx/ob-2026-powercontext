@@ -47,3 +47,9 @@ export const search = (text: string, embedding: number[], topK: number) =>
     method: 'POST',
     body: JSON.stringify({ text, embedding, topK }),
   });
+
+export const resetLibrary = () =>
+  request<{ ok: boolean; name: string; dimension: number; count: number }>('/api/reset', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
