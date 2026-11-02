@@ -23,6 +23,10 @@ export async function connect({ dimension = config.dimension } = {}) {
   await bootstrap.execute(`CREATE DATABASE IF NOT EXISTS \`${config.database}\``);
   await bootstrap.close();
 
+  if (client) {
+    // 重连前释放旧连接，避免切换维度/重建 collection 后句柄泄漏
+    await client.close();
+  }
   client = new SeekdbClient({
     host: config.host,
     port: config.port,

@@ -84,6 +84,16 @@ cd server && npm run smoke
 # [smoke] ok
 ```
 
+自动化测试（需要 seekdb 在跑，用例会自建 `stepfun_test` 库并清理）：
+
+```bash
+cd server && npm test
+# ok 1 - hybrid search fuses keyword and vector candidates
+# ok 2 - collection reset empties the library without breaking it
+# ok 3 - keyword branch ranks the matching document first and topK bounds results
+# pass 3 / fail 0
+```
+
 ## 为什么满足「检索处理由 seekdb 完成」
 
 `server/src/store.js` 调用 SDK 的 `collection.hybridSearch({ query, knn, rank })`，
