@@ -31,6 +31,10 @@
 - **设备**：`navigator.gpu.requestAdapter()` 成功且返回 adapter 才用 WebGPU，否则 WASM；
   用户可以手动覆盖（便于在同一台机器上对比两条路径）。
 - **模型源**：默认 `hf-mirror.com`，可改成任意 Hugging Face 兼容镜像，便于离线/内网演示。
+- **权重传输**：镜像站不返回 CORS 头，浏览器直连会 `Failed to fetch`（已实测）。因此权重统一
+  由 Node 桥代理：浏览器请求同源 `/api/model/<path>`，桥用 `fetch` 取上游并流式转发，
+  并写入 `cache-control: public, max-age=86400`。副作用是内网部署时只需桥能出网，
+  浏览器不必可访问外网。
 - **权重精度**：`q8`（INT8 动态量化，默认）、`fp16`（WebGPU 下可用）、`fp32`（对照基线）。
   切换精度只需重新加载模型，向量维度不变（384），因此不必重建 collection。
 - **后端不可用**：`/api/health` 失败时页面顶部状态条直接显示原因，不会静默失败。

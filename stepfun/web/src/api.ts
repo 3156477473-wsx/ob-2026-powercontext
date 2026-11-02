@@ -53,3 +53,16 @@ export const resetLibrary = () =>
     method: 'POST',
     body: JSON.stringify({}),
   });
+
+export interface ModelSourceInfo {
+  ok: boolean;
+  upstream: string;
+}
+
+export const modelSource = () => request<ModelSourceInfo>('/api/model');
+
+export const setModelSource = (host: string) =>
+  request<ModelSourceInfo>('/api/model/source', {
+    method: 'POST',
+    body: JSON.stringify({ host }),
+  });

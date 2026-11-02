@@ -6,6 +6,7 @@ import cors from 'cors';
 import express from 'express';
 
 import { config } from './config.js';
+import { proxyModel, setUpstream, upstream } from './model-proxy.js';
 import { close, collectionInfo, count, hybridSearch, resetLibrary, upsertDocuments } from './store.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -91,6 +92,27 @@ app.post('/api/search', async (req, res, next) => {
     const hits = await hybridSearch({ text, embedding, topK });
     const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
     res.json({ ok: true, topK, elapsedMs, hits, statement: 'CALL DBMS_HYBRID_SEARCH(<collection>, <search_parm>)' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/model', (_req, res) => {
+  res.json({ ok: true, upstream: upstream() });
+});
+
+app.post('/api/model/source', (req, res, next) => {
+  try {
+    res.json({ ok: true, upstream: setUpstream(req.body?.host) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 浏览器同源取模型权重：/api/model/<path> → <mirror>/<path>
+app.get('/api/model/*', async (req, res, next) => {
+  try {
+    await proxyModel(req.params[0], res);
   } catch (error) {
     next(error);
   }

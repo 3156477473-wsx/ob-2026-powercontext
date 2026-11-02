@@ -1,5 +1,7 @@
 import { env, pipeline, type FeatureExtractionPipeline } from '@huggingface/transformers';
 
+import { setModelSource } from './api';
+
 export type Device = 'webgpu' | 'wasm';
 export type Dtype = 'q8' | 'fp16' | 'fp32';
 
@@ -67,14 +69,17 @@ export async function detectDevice(): Promise<Device> {
 export const gpuDescription = async (): Promise<string> => {
   const gpu = gpuApi();
   if (!gpu) {
-    return 'WebGPU 不可用';
+    return 'WebGPU 不可用（回退 WASM）';
   }
   try {
     const adapter = await gpu.requestAdapter();
-    const info = adapter?.requestAdapterInfo ? await adapter.requestAdapterInfo() : null;
+    if (!adapter) {
+      return 'WebGPU 不可用（回退 WASM）';
+    }
+    const info = adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : null;
     return info?.description || info?.vendor || 'WebGPU 可用';
   } catch {
-    return 'WebGPU 可用';
+    return 'WebGPU 不可用（回退 WASM）';
   }
 };
 
@@ -92,9 +97,11 @@ export class BrowserEmbedder {
     env.allowLocalModels = false;
     env.useBrowserCache = true;
     if (options.host) {
-      env.remoteHost = options.host;
-      env.remotePathTemplate = '{model}/resolve/{revision}/';
+      // 模型权重经 Node 桥代理（同源），避免镜像站缺少 CORS 头导致 Failed to fetch
+      await setModelSource(options.host);
     }
+    env.remoteHost = `${window.location.origin}/api/model`;
+    env.remotePathTemplate = '{model}/resolve/{revision}/';
     const loader = pipeline as unknown as PipelineLoader;
     this.extractor = await loader('feature-extraction', options.modelId, {
       device: options.device,

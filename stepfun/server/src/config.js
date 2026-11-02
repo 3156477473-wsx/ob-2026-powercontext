@@ -13,6 +13,7 @@ export const config = {
   dimension: num(process.env.EMBEDDING_DIMENSION, 384),
   distance: process.env.SEEKDB_DISTANCE ?? 'cosine',
   httpPort: num(process.env.PORT, 8787),
+  modelMirror: process.env.MODEL_MIRROR ?? 'https://hf-mirror.com',
   batchSize: num(process.env.BATCH_SIZE, 32),
   maxTopK: num(process.env.MAX_TOP_K, 50),
 };

@@ -14,7 +14,10 @@
 | 命中来源可解释 | 结果卡片标注「向量命中 / 仅关键词命中」，距离为空即只被全文分支召回 | 用纯符号或生僻词做查询，可见「仅关键词命中」 |
 | 设置持久化 | 模型、设备、精度、下载源写入 `localStorage`（`stepfun-rag-settings`），刷新后保持 | 刷新页面观察配置不变 |
 | 性能表格 | 表格含配置、设备、精度、加载耗时、向量化耗时、吞吐（段/秒）、维度 | 点「量化对比」 |
-| 文档 | `README.md`（架构、快速开始、降级策略、环境变量、限制）+ 本文件 | — |
+| 模型权重同源代理 | hf-mirror 不返回 CORS 头，浏览器直连会 `Failed to fetch`；改由 `server/src/model-proxy.js` 代理：`GET /api/model/<path>` 流式转发上游，`POST /api/model/source` 即时切换上游 | `curl 'http://127.0.0.1:8787/api/model/Xenova/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json'` 返回 JSON |
+| 自动化测试 | `server/test/hybrid.test.mjs`：融合检索、重建 collection、关键词分支排序与 topK 边界，跑在真实 seekdb 上（自建 `stepfun_test` 库并清理） | `cd server && npm test` → `pass 3 / fail 0` |
+| 可复现截图 | `scripts/screenshot.mjs` 用 Playwright 跑完整流程并截图，产物在 `docs/screenshots/` | `node scripts/screenshot.mjs` |
+| 文档 | `README.md`（架构、效果图、快速开始、降级策略、环境变量、限制）+ 本文件 + `docs/design.md` + `docs/benchmark.md` + `docs/demo-script.md` | — |
 
 ## 自检命令
 
@@ -41,7 +44,7 @@ cd ../web && npm run build
 
 ## 未覆盖项（需人工在浏览器内确认）
 
-- 真实 WebGPU 吞吐：本仓库开发机无 GPU，已验证 WASM 路径与构建产物；WebGPU 行需在带
-  GPU 的浏览器点「量化对比」后截图；
-- 浏览器内模型首次下载耗时：取决于网络与镜像，页面有进度条与耗时显示；
+- 真实 WebGPU 吞吐：开发机无 GPU（headless Chromium 拿不到 adapter），已验证 WASM 路径、
+  构建产物与自动截图；WebGPU 行需在带 GPU 的浏览器点「量化对比」后补一张表；
+- 浏览器内模型首次下载耗时：实测镜像约 83 KB/s，首次 277 s、缓存后 270 ms，取决于网络；
 - 打分维度中的「产品完整度」：当前是单页 demo，无账号体系、无持久会话。

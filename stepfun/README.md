@@ -35,7 +35,23 @@
 | `docs/benchmark.md` | 已实测的检索耗时与待补的 GPU 数据 |
 | `docs/demo-script.md` | 3–5 分钟录屏脚本 |
 | `docs/design.md` | 架构取舍、单语句理由、RRF 参数、降级与安全边界 |
+| `docs/screenshots/` | 真实浏览器截图（headless Chromium + WASM） |
 | `scripts/start-dev.sh` | 一键自检并启动桥与前端（`--check` 只做自检） |
+| `scripts/screenshot.mjs` | 用 Playwright 跑完整流程并截图（加载模型 → 入库 → 检索 → 量化对比） |
+
+## 效果
+
+| 初始页面 | 混合检索结果 |
+| --- | --- |
+| ![初始页面](docs/screenshots/01-initial.png) | ![检索结果](docs/screenshots/04-search.png) |
+
+![量化对比](docs/screenshots/05-benchmark.png)
+
+上面三张图由 `scripts/screenshot.mjs` 在 headless Chromium 中自动跑出（无可用 WebGPU
+adapter，因此设备行显示 `WASM · WebGPU 不可用（回退 WASM）`）；库内 10 条中文技术句，
+查询「浏览器端 embedding 和 seekdb 是怎么配合完成混合检索的？」返回 5 条，
+查询向量化 25.2 ms、seekdb 单语句检索 60.1 ms。INT8 与 FP32 的加载/吞吐对比见
+[`docs/benchmark.md`](docs/benchmark.md)。
 
 ## 快速开始
 
@@ -107,7 +123,8 @@ SDK 生成 `DBMS_HYBRID_SEARCH` 参数并让 seekdb 返回检索 SQL，真正取
 | --- | --- |
 | 浏览器支持 WebGPU 且能拿到 adapter | 使用 `device: 'webgpu'`，页面显示 adapter 描述 |
 | 无 WebGPU / adapter 获取失败 | 自动切到 `device: 'wasm'`，UI 上明确标注「WASM（CPU 兜底）」 |
-| 模型下载源不可达 | 「模型下载源」输入框可改成任意 Hugging Face 兼容镜像 |
+| 模型镜像站缺少 CORS 头（实测 hf-mirror 直连报 `Failed to fetch`） | 权重改由 Node 桥同源代理：浏览器请求 `/api/model/<path>`，桥再向上游取，彻底绕开跨域 |
+| 模型下载源不可达 | 「模型下载源」输入框改任意 Hugging Face 兼容镜像，桥即时切换上游（`POST /api/model/source`） |
 | seekdb 未启动 | `/api/health` 返回错误，页面顶部状态条提示后端不可用 |
 
 ## 环境变量（Node 桥）
@@ -120,6 +137,7 @@ SDK 生成 `DBMS_HYBRID_SEARCH` 参数并让 seekdb 返回检索 SQL，真正取
 | `SEEKDB_COLLECTION` | `documents` | collection 名 |
 | `EMBEDDING_DIMENSION` | `384` | 与前端模型输出维度一致 |
 | `PORT` | `8787` | 桥的 HTTP 端口 |
+| `MODEL_MIRROR` | `https://hf-mirror.com` | 模型权重上游（浏览器经 `/api/model/*` 代理取） |
 | `BATCH_SIZE` | `32` | 单次写入条数 |
 
 ## 已知限制
