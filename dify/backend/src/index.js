@@ -1,0 +1,123 @@
+import express from "express";
+
+import { config } from "./config.js";
+import { embedOne, embeddingMode, warmup } from "./embed.js";
+import * as store from "./store.js";
+
+const app = express();
+app.use(express.json({ limit: "256kb" }));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+  next();
+});
+
+const asText = (value) => (typeof value === "string" ? value.trim() : "");
+const fail = (res, status, message) => res.status(status).json({ ok: false, error: message });
+
+function memoryBlock(memories) {
+  if (!memories.length) {
+    return "（这位客人是第一次来，还没有任何记忆）";
+  }
+  return memories.map((item) => `- ${item.fact}`).join("\n");
+}
+
+function loreBlock(lore) {
+  if (!lore.length) {
+    return "（今晚没有特别的酒单提示）";
+  }
+  return lore.map((item) => `- ${item.title ? `【${item.title}】` : ""}${item.text}`).join("\n");
+}
+
+app.get("/api/health", async (req, res) => {
+  try {
+    const s = await store.stats();
+    res.json({ ok: true, service: "jiuguan-backend", embed_mode: embeddingMode(), ...s });
+  } catch (error) {
+    fail(res, 500, error.message);
+  }
+});
+
+app.post("/api/recall", async (req, res) => {
+  const userId = asText(req.body?.user_id) || "guest";
+  const message = asText(req.body?.message) || asText(req.body?.query);
+  if (!message) {
+    fail(res, 400, "message 不能为空");
+    return;
+  }
+  try {
+    const embedding = await embedOne(message);
+    const { lore, memories } = await store.recall({
+      userId,
+      message,
+      embedding,
+      topK: config.recallTopK,
+    });
+    res.json({
+      ok: true,
+      user_id: userId,
+      embed_mode: embeddingMode(),
+      memory_count: memories.length,
+      lore_count: lore.length,
+      memory_block: memoryBlock(memories),
+      lore_block: loreBlock(lore),
+      memories,
+      lore,
+    });
+  } catch (error) {
+    fail(res, 500, error.message);
+  }
+});
+
+app.post("/api/remember", async (req, res) => {
+  const userId = asText(req.body?.user_id) || "guest";
+  const fact = asText(req.body?.fact);
+  if (!fact) {
+    fail(res, 400, "fact 不能为空");
+    return;
+  }
+  try {
+    const embedding = await embedOne(fact);
+    const result = await store.remember({ userId, fact, embedding });
+    res.json({ ok: true, user_id: userId, fact, ...result });
+  } catch (error) {
+    fail(res, 500, error.message);
+  }
+});
+
+app.post("/api/reset", async (req, res) => {
+  try {
+    const result = await store.forgetAll();
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    fail(res, 500, error.message);
+  }
+});
+
+app.use((req, res) => {
+  fail(res, 404, `未知路径 ${req.path}`);
+});
+
+const server = app.listen(config.httpPort, config.host === "0.0.0.0" ? "0.0.0.0" : "127.0.0.1", () => {
+  console.log(`[server] listening on http://127.0.0.1:${config.httpPort}`);
+  console.log(`[server] seekdb ${config.host}:${config.port} db=${config.database}`);
+  console.log(`[server] collections lore=${config.loreCollection} memory=${config.memoryCollection}`);
+  warmup()
+    .then((mode) => console.log(`[server] embedding mode=${mode}`))
+    .catch((error) => console.warn(`[server] warmup failed: ${error.message}`));
+});
+
+const shutdown = async () => {
+  server.close();
+  await store.close();
+  process.exit(0);
+};
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
+export default app;

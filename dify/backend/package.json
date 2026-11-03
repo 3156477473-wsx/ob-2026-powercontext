@@ -1,0 +1,20 @@
+{
+  "name": "jiuguan-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "「深夜酒馆 · 阿九」Dify 应用后端：seekdb 混合检索 + 跨会话记忆",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "seed": "node src/seed.js",
+    "smoke": "node src/smoke.js"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.2",
+    "express": "^4.21.2",
+    "seekdb": "1.4.0"
+  }
+}
