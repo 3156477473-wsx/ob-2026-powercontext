@@ -1,4 +1,5 @@
 node_modules/
-*.log
 dist/
 .vite/
+*.log
+!samples/evidence/*.log
