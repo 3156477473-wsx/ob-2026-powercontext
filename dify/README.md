@@ -82,6 +82,8 @@ dify/
 cd dify && bash scripts/verify.sh
 ```
 
+若设定库为空（刚克隆、还没跑过 seed），脚本会先自动灌入 22 条设定再验证，保证任何人在干净环境里都能一次跑通。
+
 实测输出（留档于 `samples/evidence/smoke.log`）：
 
 ```

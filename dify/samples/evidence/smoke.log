@@ -1,9 +1,9 @@
 
 ===== 验证样例执行结果 =====
-PASS  health  (lore=22 memory=1 embed=hash)
+PASS  health  (lore=22 memory=3 embed=hash)
 PASS  首次到店：无记忆  (memory_count=0)
 PASS  首次到店：命中酒馆设定  (lore_count=3 首条=黑话 · 老样子)
-PASS  写入记忆  (count=1 id=mem:smoke_a:1793697679944:0)
+PASS  写入记忆  (count=1 id=mem:smoke_a:1793698052172:0)
 PASS  新会话召回跨会话记忆  (memory_count=1 首条=最近连续加班到深夜，被老板在群里点名)
 PASS  用户隔离  (smoke_b memory_count=0)
 ===== 全部通过 =====

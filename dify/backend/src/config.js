@@ -9,7 +9,7 @@ export const config = {
   dimension: Number(process.env.EMBED_DIMENSION ?? 384),
   distance: process.env.EMBED_DISTANCE ?? "l2",
   httpPort: Number(process.env.PORT ?? 8791),
-  embedMode: process.env.EMBED_MODE ?? "local",
+  embedMode: process.env.EMBED_MODE ?? "hash",
   modelId: process.env.EMBED_MODEL ?? "Xenova/all-MiniLM-L6-v2",
   modelMirror: process.env.MODEL_MIRROR ?? "https://hf-mirror.com",
   recallTopK: Number(process.env.RECALL_TOP_K ?? 3),
