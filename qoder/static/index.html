@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>文献笔记智能检索助手</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --card: #151b30;
+    --line: #26304d;
+    --text: #e8ecf7;
+    --muted: #93a0c2;
+    --accent: #4f7cff;
+    --accent2: #22d3a6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #1a2450 0%, var(--bg) 55%);
+    color: var(--text); min-height: 100vh;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 20px 80px; }
+  header h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: .5px; }
+  header p { color: var(--muted); margin: 0 0 24px; line-height: 1.6; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+  .badge {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .badge.on { color: var(--accent2); border-color: #1d6a55; background: #0f2a24; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px; margin-bottom: 18px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 14px; color: var(--muted); font-weight: 600; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  input[type="text"], select {
+    flex: 1; min-width: 200px; background: #0e1428; color: var(--text);
+    border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+    font-size: 14px; outline: none;
+  }
+  input[type="text"]:focus, select:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+    padding: 12px 20px; font-size: 14px; cursor: pointer; font-weight: 600;
+  }
+  button:hover { filter: brightness(1.1); }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .stats { display: flex; gap: 24px; color: var(--muted); font-size: 13px; }
+  .stats b { color: var(--text); font-size: 18px; display: block; }
+  .result {
+    border-top: 1px solid var(--line); padding: 14px 0;
+  }
+  .result:first-child { border-top: 0; }
+  .result .meta {
+    display: flex; justify-content: space-between; font-size: 12px;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .score { color: var(--accent2); font-weight: 600; }
+  .result p { margin: 0; line-height: 1.7; font-size: 14px; color: #cdd6ee; }
+  mark { background: #2b3f7a; color: #fff; border-radius: 3px; padding: 0 2px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 18px 0; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .err { color: #ff8080; font-size: 13px; }
+  footer { color: #5f6b8f; font-size: 12px; text-align: center; margin-top: 40px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>文献笔记智能检索助手</h1>
+    <p>把论文、课程笔记、实验记录导入 seekdb，用「向量 + 全文 + 结构化过滤」混合检索，快速定位相关段落与出处。</p>
+    <div class="badges">
+      <span class="badge on" id="seekdb-badge">seekdb 连接中…</span>
+      <span class="badge">向量检索</span>
+      <span class="badge">全文检索</span>
+      <span class="badge">混合排序</span>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>① 导入资料</h2>
+    <div class="row">
+      <input type="file" id="file" accept=".pdf,.txt,.md" multiple />
+      <button id="uploadBtn">上传并建索引</button>
+      <button class="ghost" id="resetBtn">清空索引</button>
+    </div>
+    <div class="hint">支持 PDF / TXT / Markdown。上传后自动切块并写入 seekdb 向量表。</div>
+    <div class="hint" id="uploadMsg"></div>
+  </section>
+
+  <section class="card">
+    <div class="stats">
+      <div><b id="docCount">0</b>文档</div>
+      <div><b id="chunkCount">0</b>文本块</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>② 检索</h2>
+    <div class="row" style="margin-bottom:10px">
+      <input type="text" id="query" placeholder="例如：实验中的误差主要来源是什么？" />
+      <select id="mode">
+        <option value="hybrid">混合检索</option>
+        <option value="vector">仅向量</option>
+        <option value="keyword">仅全文</option>
+      </select>
+      <select id="docFilter">
+        <option value="">全部文档</option>
+      </select>
+      <button id="searchBtn">搜索</button>
+    </div>
+    <div class="hint">混合检索会同时利用 seekdb 的向量索引与全文索引，返回相关度最高的片段。</div>
+  </section>
+
+  <section class="card">
+    <h2>③ 结果</h2>
+    <div id="results"><div class="empty">还没有结果，先导入资料再搜索。</div></div>
+  </section>
+
+  <footer>
+    2026 OceanBase 数据库大赛 · Qoder 赛道<br />
+    核心检索由 seekdb（向量 + 全文 + 混合检索）提供
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let docs = [];
+
+async function refreshStats() {
+  try {
+    const r = await fetch('/api/stats');
+    const d = await r.json();
+    $('docCount').textContent = d.docs ?? 0;
+    $('chunkCount').textContent = d.chunks ?? 0;
+    $('seekdb-badge').textContent = 'seekdb 已连接';
+  } catch (e) {
+    $('seekdb-badge').textContent = 'seekdb 未连接';
+    $('seekdb-badge').classList.remove('on');
+  }
+}
+
+async function refreshDocs() {
+  try {
+    const r = await fetch('/api/docs');
+    const d = await r.json();
+    const select = $('docFilter');
+    const current = select.value;
+    select.innerHTML = '<option value="">全部文档</option>';
+    for (const doc of d.docs) {
+      const opt = document.createElement('option');
+      opt.value = doc;
+      opt.textContent = doc;
+      select.appendChild(opt);
+    }
+    if (d.docs.includes(current)) select.value = current;
+  } catch (e) {
+    // 静默失败，下拉框保持默认
+  }
+}
+
+async function upload() {
+  const files = $('file').files;
+  if (!files.length) { $('uploadMsg').textContent = '请先选择文件'; return; }
+  $('uploadBtn').disabled = true;
+  $('uploadMsg').textContent = '上传中…';
+  try {
+    for (const f of files) {
+      const fd = new FormData();
+      fd.append('file', f);
+      const r = await fetch('/api/upload', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || '上传失败');
+      $('uploadMsg').textContent = `已导入 ${d.doc}：${d.chunks} 个文本块`;
+    }
+    await refreshStats();
+    await refreshDocs();
+  } catch (e) {
+    $('uploadMsg').textContent = '错误：' + e.message;
+  } finally {
+    $('uploadBtn').disabled = false;
+  }
+}
+
+function highlight(text, q) {
+  if (!q) return text;
+  const words = q.split(/\s+/).filter(Boolean);
+  let out = text;
+  for (const w of words) {
+    out = out.replaceAll(w, `<mark>${w}</mark>`);
+  }
+  return out;
+}
+
+async function search() {
+  const q = $('query').value.trim();
+  if (!q) return;
+  $('searchBtn').disabled = true;
+  $('results').innerHTML = '<div class="empty">检索中…</div>';
+  try {
+    const r = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q, top_k: 5, mode: $('mode').value, doc: $('docFilter').value || null }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '检索失败');
+    if (!d.count) {
+      $('results').innerHTML = '<div class="empty">没有找到相关内容，换个说法试试。</div>';
+      return;
+    }
+    $('results').innerHTML = d.results.map((x) => `
+      <div class="result">
+        <div class="meta">
+          <span>${x.doc} · 第 ${x.chunk_no + 1} 块</span>
+          <span class="score">相似度 ${x.score}</span>
+        </div>
+        <p>${highlight(x.content, q)}</p>
+      </div>`).join('');
+  } catch (e) {
+    $('results').innerHTML = `<div class="err">错误：${e.message}</div>`;
+  } finally {
+    $('searchBtn').disabled = false;
+  }
+}
+
+async function reset() {
+  if (!confirm('确定清空所有索引？')) return;
+  await fetch('/api/reset', { method: 'POST' });
+  await refreshStats();
+  $('results').innerHTML = '<div class="empty">索引已清空。</div>';
+}
+
+$('uploadBtn').onclick = upload;
+$('searchBtn').onclick = search;
+$('resetBtn').onclick = reset;
+$('query').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+refreshStats();
+refreshDocs();
+</script>
+</body>
+</html>
