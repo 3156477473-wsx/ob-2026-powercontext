@@ -10,12 +10,21 @@
 
 | 材料 | 位置 |
 |---|---|
-| 项目网站 | https://literature-search-v3-xzdmkqazlbf.qoder.zone |
+| 项目网站 | https://literature-search-new-xzdmkqazlbf.qoder.zone |
 | 代码仓库 | 本目录 `qoder/`（分支 `2026-competition-ecosystem`） |
 | 运行说明 | 本文「运行说明」章节 |
 | 验证样例 | [samples/README.md](samples/README.md) |
 | Qoder 开发记录 | [docs/qoder/](docs/qoder/) 下 5 张截图 |
 | 技术说明 | [docs/SITE-CONTENT.md](docs/SITE-CONTENT.md) |
+| Qoder 账号 UID | `1823087646185968` |
+
+## Qoder 账号信息
+
+| 项目 | 值 |
+|---|---|
+| Qoder 名称 | `aliyun-1823087646185968` |
+| 阿里云账号 ID | `1823087646185968` |
+| 站点域名 | `literature-search-new-xzdmkqazlbf.qoder.zone` |
 
 ## 解决的问题
 
