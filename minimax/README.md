@@ -131,19 +131,41 @@ python -m ctx.cli resume --task "时间范围过滤"
 
 ## 验收对应
 
-| 验收项 | 本项目如何满足 |
-|---|---|
-| 能够运行 | 按上述步骤可完整复现 |
-| MiniMax 实际参与 | `records/minimax-*.json` 记录任务、上下文、响应与提取代码 |
-| 上下文正确 | `build` 输出含 SPEC-005/SPEC-003、`list` 方法、目标测试；规格改动后重新 index 即生效 |
-| 数据库实际参与 | `eng_docs` 表存全部资料，检索结果构成上下文 |
-| 状态能够复用 | `save` 写入 PowerContext，`resume` 重启后读回 |
-| 代码修改有效 | 修改前目标测试 8 failed / 回归 13 passed；修改后 21 passed |
+| 验收项 | 本项目如何满足 | 证据 |
+|---|---|---|
+| 能够运行 | 按上述步骤可完整复现 | 本文「快速开始」 |
+| **MiniMax 实际参与** | 4 次真实调用，含失败→反馈→通过的完整迭代 | [records/README.md](records/README.md) |
+| 上下文正确 | `build` 输出含 SPEC-005/SPEC-003、`list` 方法、目标测试；规格改动后重新 index 即生效 | `records/*.json` 的 `context_specs/code/tests` |
+| 数据库实际参与 | `eng_docs` 表存全部资料（spec 6 / code 8 / test 23），检索结果构成上下文 | `SELECT doc_type, COUNT(*) FROM eng_docs GROUP BY doc_type` |
+| 状态能够复用 | `save` 写入 PowerContext，`resume` 重启后读回 | `ctx.cli resume` 输出含 `artifact_id` |
+| 代码修改有效 | 修改前：回归 13 passed / 目标 8 errors；修改后：**21 passed** | 见下方测试记录 |
+
+## 测试记录
+
+**修改前：**
+
+```
+tests/test_regression.py  13 passed
+tests/test_time_filter.py  8 errors (TypeError: unexpected keyword argument 'created_at')
+```
+
+**MiniMax 第 1 轮生成后：**
+
+```
+13 passed, 8 errors   ← 实现了 list() 过滤，但漏改 create(created_at=...)
+```
+
+**反馈测试失败后，MiniMax 第 2 轮生成：**
+
+```
+21 passed
+```
 
 ## 已知限制
 
 - 向量为本地哈希实现，无外部 embedding 依赖，语义泛化弱于真实模型，由全文匹配兜底。
 - PowerContext 未配置推理模型，任务状态采用显式写入的原子记忆。
 - 业务工程为内存实现，便于测试复现。
+- MiniMax-M3 为推理模型，生成完整文件需约 3500 completion tokens（其中推理约 2200），`max_tokens` 需设为 8000。
 
 详细说明见 [docs/TECH.md](docs/TECH.md)，验证步骤见 [docs/SAMPLES.md](docs/SAMPLES.md)。

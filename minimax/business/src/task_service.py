@@ -1,7 +1,6 @@
 """任务清单服务 —— 业务核心。
 
-初始版本实现 SPEC-001 ~ SPEC-004、SPEC-006。
-SPEC-005（时间范围过滤）尚未实现，待本次任务完成。
+实现 SPEC-001 ~ SPEC-006。
 """
 
 from __future__ import annotations
@@ -49,16 +48,28 @@ class TaskService:
         self._next_id = 1
 
     # ---------- SPEC-001 ----------
-    def create(self, title: str, description: str = "", tags: Optional[List[str]] = None) -> Task:
+    def create(
+        self,
+        title: str,
+        description: str = "",
+        tags: Optional[List[str]] = None,
+        created_at: Optional[datetime] = None,
+    ) -> Task:
         title = (title or "").strip()
         if not title or len(title) > 200:
             raise ValidationError("title 必填，长度 1-200 字符")
+
+        if created_at is None:
+            created_at = datetime.now(timezone.utc)
+        elif created_at.tzinfo is None or created_at.utcoffset() is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
 
         task = Task(
             id=self._next_id,
             title=title,
             description=description or "",
             tags=self._normalize_tags(tags),
+            created_at=created_at,
         )
         self._tasks[task.id] = task
         self._next_id += 1
@@ -85,24 +96,66 @@ class TaskService:
                 seen.append(t)
         return seen
 
-    # ---------- SPEC-003 ----------
+    # ---------- SPEC-005 ----------
+    @staticmethod
+    def _parse_created_at(value: str, parameter_name: str) -> datetime:
+        """解析 ISO 8601 创建时间；无时区的时间按 UTC 解释。"""
+        if not isinstance(value, str):
+            raise ValidationError(
+                f"非法 {parameter_name} 时间 {value!r}，必须使用 ISO 8601 格式"
+            )
+
+        normalized = value
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(
+                f"非法 {parameter_name} 时间 {value!r}，必须使用 ISO 8601 格式"
+            ) from exc
+
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+
+        return parsed
+
+    # ---------- SPEC-003 / SPEC-005 ----------
     def list(
         self,
         status: Optional[str] = None,
         tag: Optional[str] = None,
+        created_from: Optional[str] = None,
+        created_to: Optional[str] = None,
     ) -> List[Task]:
-        """按状态与标签过滤任务。
+        """按状态、标签及创建时间范围过滤任务。
 
-        SPEC-003：两个参数同时存在时是 AND 语义。
+        所有过滤条件同时存在时使用 AND 语义；创建时间边界均包含在内。
         """
         if status is not None:
             self._validate_status(status)
+
+        lower_bound = (
+            self._parse_created_at(created_from, "created_from")
+            if created_from is not None
+            else None
+        )
+        upper_bound = (
+            self._parse_created_at(created_to, "created_to")
+            if created_to is not None
+            else None
+        )
 
         result: List[Task] = []
         for task in self._tasks.values():
             if status is not None and task.status != status:
                 continue
             if tag is not None and tag not in task.tags:
+                continue
+            if lower_bound is not None and task.created_at < lower_bound:
+                continue
+            if upper_bound is not None and task.created_at > upper_bound:
                 continue
             result.append(task)
 

@@ -54,8 +54,12 @@ class MiniMaxAgent:
                 "  export MINIMAX_API_KEY=sk-..."
             )
 
-    def complete(self, messages: List[Dict[str, str]], max_tokens: int = 4000) -> str:
-        """调用 MiniMax 对话接口，返回模型文本。"""
+    def complete(self, messages: List[Dict[str, str]], max_tokens: int = 8000) -> str:
+        """调用 MiniMax 对话接口，返回模型文本。
+
+        MiniMax-M3 为推理模型，max_tokens 需同时覆盖 reasoning tokens 与正文，
+        实测生成完整文件约需 3500 completion tokens（其中推理约 2200）。
+        """
         self._check_key()
         payload = {
             "model": self.model,
@@ -97,6 +101,8 @@ class MiniMaxAgent:
         original = Path(target_file).read_text(encoding="utf-8")
 
         ctx_text = _render_context(context)
+        note_block = f"## 补充说明\n{extra_note}" if extra_note else ""
+
         user = f"""## 开发任务
 {task}
 
@@ -114,7 +120,7 @@ class MiniMaxAgent:
 {original}
 ```
 
-{('## 补充说明\n' + extra_note) if extra_note else ''}
+{note_block}
 
 请按规格完成修改，输出完整的新文件内容。"""
 
