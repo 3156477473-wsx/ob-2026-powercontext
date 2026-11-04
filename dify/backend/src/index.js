@@ -43,9 +43,22 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-app.post("/api/recall", async (req, res) => {
-  const userId = asText(req.body?.user_id) || "guest";
-  const message = asText(req.body?.message) || asText(req.body?.query);
+// POST 与 GET 共用：参数可来自 body 或 URL query，任一有值即可。
+// Dify 的 HTTP 节点在不同版本里对 body/query 的渲染行为不一致，
+// 这里同时接受两种来源，保证工作流能稳定跑通。
+function pickInput(req, ...names) {
+  for (const name of names) {
+    const fromBody = asText(req.body?.[name]);
+    if (fromBody) return fromBody;
+    const fromQuery = asText(req.query?.[name]);
+    if (fromQuery) return fromQuery;
+  }
+  return "";
+}
+
+async function recallHandler(req, res) {
+  const userId = pickInput(req, "user_id") || "guest";
+  const message = pickInput(req, "message", "query");
   if (!message) {
     fail(res, 400, "message 不能为空");
     return;
@@ -72,11 +85,14 @@ app.post("/api/recall", async (req, res) => {
   } catch (error) {
     fail(res, 500, error.message);
   }
-});
+}
 
-app.post("/api/remember", async (req, res) => {
-  const userId = asText(req.body?.user_id) || "guest";
-  const fact = asText(req.body?.fact);
+app.post("/api/recall", recallHandler);
+app.get("/api/recall", recallHandler);
+
+async function rememberHandler(req, res) {
+  const userId = pickInput(req, "user_id") || "guest";
+  const fact = pickInput(req, "fact");
   if (!fact) {
     fail(res, 400, "fact 不能为空");
     return;
@@ -88,7 +104,10 @@ app.post("/api/remember", async (req, res) => {
   } catch (error) {
     fail(res, 500, error.message);
   }
-});
+}
+
+app.post("/api/remember", rememberHandler);
+app.get("/api/remember", rememberHandler);
 
 app.post("/api/reset", async (req, res) => {
   try {
@@ -103,8 +122,8 @@ app.use((req, res) => {
   fail(res, 404, `未知路径 ${req.path}`);
 });
 
-const server = app.listen(config.httpPort, config.host === "0.0.0.0" ? "0.0.0.0" : "127.0.0.1", () => {
-  console.log(`[server] listening on http://127.0.0.1:${config.httpPort}`);
+const server = app.listen(config.httpPort, config.httpHost, () => {
+  console.log(`[server] listening on http://${config.httpHost}:${config.httpPort}`);
   console.log(`[server] seekdb ${config.host}:${config.port} db=${config.database}`);
   console.log(`[server] collections lore=${config.loreCollection} memory=${config.memoryCollection}`);
   warmup()

@@ -9,6 +9,9 @@ export const config = {
   dimension: Number(process.env.EMBED_DIMENSION ?? 384),
   distance: process.env.EMBED_DISTANCE ?? "l2",
   httpPort: Number(process.env.PORT ?? 8791),
+  // HTTP 监听地址：默认仅本机。Dify 跑在容器里时设为 0.0.0.0，
+  // 让容器能通过宿主机 IP 访问后端。
+  httpHost: process.env.HTTP_HOST ?? "127.0.0.1",
   embedMode: process.env.EMBED_MODE ?? "hash",
   modelId: process.env.EMBED_MODEL ?? "Xenova/all-MiniLM-L6-v2",
   modelMirror: process.env.MODEL_MIRROR ?? "https://hf-mirror.com",

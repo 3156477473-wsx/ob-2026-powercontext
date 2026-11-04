@@ -74,13 +74,38 @@ curl -s http://127.0.0.1:8791/api/health
 
 ## 5. 导入 Dify 应用
 
+有两个 DSL 文件，按你的 Dify 版本选一个：
+
+| 文件 | 适用版本 | 说明 |
+| --- | --- | --- |
+| `dsl/jiuguan-a-jiu.chatflow.yml` | Dify 1.4.x | 原始版本，HTTP 节点用 POST + JSON body |
+| `dsl/jiuguan-a-jiu.dify-1.19.yml` | **Dify 1.19.x（实测通过）** | 适配版：GET + URL 参数，变量用节点 ID 引用 |
+
+**Dify 1.19 用户请用第二个文件**，原因见第 6 节「版本适配说明」。
+
 1. **安装模型插件**（若尚未安装）：Dify → 插件 → 安装 `OpenAI-API-compatible`，配置你的模型服务（Base URL / Key / 模型名）。
-2. **导入 DSL**：Dify → 工作室 → 导入 DSL → 选择 `dify/dsl/jiuguan-a-jiu.chatflow.yml`（导入后应用名「深夜酒馆 · 阿九」）。
+2. **导入 DSL**：Dify → 工作室 → 导入 DSL → 选择 `dify/dsl/jiuguan-a-jiu.dify-1.19.yml`（导入后应用名「深夜酒馆 · 阿九」）。
 3. **绑定模型**：打开应用，依次点开 **「阿九调酒」** 与 **「抽取可记的事」** 两个 LLM 节点，把模型换成第 1 步配置的模型（temperature 建议 0.7 / 0.2）。
-4. **确认后端地址**：两个 HTTP 节点（「取记忆与酒馆设定」「写入 seekdb 记忆」）的 URL 默认是 `http://127.0.0.1:8791/api/recall` 与 `.../api/remember`；如果 Dify 跑在容器里，改成本机可达地址（见第 7 节）。
+4. **确认后端地址**：DSL 里写的是 `http://172.20.0.1:8791`（Docker 默认网桥网关）。**你的环境网桥网段可能不同**，用下面命令查到后再改：
+   ```bash
+   docker network inspect docker_default --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'
+   ```
+   把这个地址填回两个 HTTP 节点的 URL（「取记忆与酒馆设定」「写入 seekdb 记忆」）。
 5. **发布**，进入对话页，第一次输入会要求填「你的名字」（`user_id`，用于隔离记忆）。
 
 DSL 里没有任何真实密钥；模型配置保存在 Dify 自己的设置里。
+
+## 5.1 版本适配说明（Dify 1.19）
+
+原版 DSL 为 Dify 1.4.x 编写，在 1.19 上导入后有三个问题，适配版已全部解决：
+
+| 问题 | 现象 | 适配做法 |
+| --- | --- | --- |
+| SSRF 防护 | HTTP 节点访问私有地址被拒：`blocked by SSRF protection` | 在 Dify 的 `.env` 加 `SSRF_PROXY_ALLOW_PRIVATE_IPS=172.20.0.0/16,...`，再 `docker compose up -d --force-recreate ssrf_proxy api` |
+| 变量引用语法 | `{{#开始.user_id#}}` 不渲染，请求里出现字面量 | 改用节点 ID：`{{#1810000000001.user_id#}}`；对话输入用内置变量 `{{#sys.query#}}` |
+| JSON body 渲染 | POST + JSON body 报 `json body type should have exactly one item` | 改用 **GET + URL query 传参**，BODY 设为 `none` |
+
+后端已同时支持 body 与 query 两种取值方式（`pickInput()`），因此 GET/POST 都能工作。
 
 ## 6. 初始化数据
 
@@ -105,9 +130,18 @@ DSL 导出不含知识库内容，所以语料与初始化脚本都放在仓库�
 | 场景 | 处理 |
 | --- | --- |
 | Dify 与本仓库后端同机 | 默认 `127.0.0.1:8791` 即可 |
-| Dify 在 Docker 里 | 把两个 HTTP 节点改成 `http://host.docker.internal:8791/...`（Windows/macOS）或宿主机内网 IP（Linux） |
+| Dify 在 Docker 里（**本次实测环境**） | 用 Docker 网桥网关：`docker network inspect docker_default --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'`（实测为 `172.20.0.1`）。注意 `host.docker.internal` 在 WSL 下可能不可解析，优先用网关 IP |
+| 后端必须监听 0.0.0.0 | 设 `HTTP_HOST=0.0.0.0` 启动，否则容器访问不到（默认只监听 127.0.0.1） |
 | 只想跑后端自检 | `bash scripts/verify.sh`，无需 Dify |
 | 本机 embedding | 需要访问 `MODEL_MIRROR`（默认 hf-mirror）；受限环境请用 `EMBED_MODE=hash` |
+| Dify 容器访问模型服务 | 需要容器能出网；实测 TUN 模式代理或可出网的环境即可 |
+
+验证容器能否访问后端：
+
+```bash
+docker exec docker-api-1 curl -s http://172.20.0.1:8791/api/health
+# 应返回 {"ok":true,...,"lore":22,"memory":N,...}
+```
 
 资源：后端常驻约 120 MB 内存；seekdb 单机默认配置即可（两个 collection 合计 24 条文档，占用可忽略）。
 

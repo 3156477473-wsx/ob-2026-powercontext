@@ -53,8 +53,17 @@ bash scripts/start.sh          # 安装依赖 → 检查 seekdb → 灌入 22 �
 bash scripts/verify.sh         # 另开终端：跑 6 项验证样例，输出留档到 samples/evidence/
 ```
 
-然后在 Dify（≥ 1.0，Chatflow 支持即可）里导入 `dsl/jiuguan-a-jiu.chatflow.yml`，
-把两个 LLM 节点的模型改成本机已配置的模型，发布即可对话。完整步骤见 [docs/runbook.md](docs/runbook.md)。
+然后在 Dify 里导入 DSL（**按 Dify 版本选文件**）：
+
+| 文件 | 适用版本 |
+| --- | --- |
+| `dsl/jiuguan-a-jiu.dify-1.19.yml` | **Dify 1.19.x（已实测通过）** |
+| `dsl/jiuguan-a-jiu.chatflow.yml` | Dify 1.4.x |
+
+把两个 LLM 节点的模型改成本机已配置的模型，发布即可对话。完整步骤见 [docs/runbook.md](docs/runbook.md)，实测记录见 [docs/verification.md](docs/verification.md)。
+
+> **Dify 在 Docker 里时**后端必须监听 `0.0.0.0`（`HTTP_HOST=0.0.0.0`），两个 HTTP 节点的地址用 Docker 网桥网关（默认 `172.20.0.1`）。
+> Dify 1.19 还需配置 `SSRF_PROXY_ALLOW_PRIVATE_IPS` 放行该网段，详见 runbook 第 5.1 节。
 
 > 后端默认 `EMBED_MODE=hash`（确定性字符 n-gram 向量，无需联网即可跑）。
 > 想用真实语义向量：`EMBED_MODE=local npm --prefix backend run seed`，会自动下载 `Xenova/all-MiniLM-L6-v2`（384 维）。
@@ -64,7 +73,9 @@ bash scripts/verify.sh         # 另开终端：跑 6 项验证样例，输出�
 
 ```
 dify/
-├── dsl/jiuguan-a-jiu.chatflow.yml   # Dify Chatflow DSL（10 节点 / 9 连线）
+├── dsl/
+│   ├── jiuguan-a-jiu.dify-1.19.yml   # Dify 1.19 适配版（实测通过）
+│   └── jiuguan-a-jiu.chatflow.yml    # Dify 1.4.x 原版
 ├── backend/                          # Express + seekdb 后端
 │   ├── src/{config,embed,store,index,seed,smoke}.js
 │   └── data/{lore.jsonl,seed_memory.jsonl}
@@ -72,7 +83,10 @@ dify/
 ├── samples/                          # 验证样例与实测证据
 │   ├── README.md
 │   └── evidence/{smoke.log,health.json}
-├── docs/{runbook.md,acceptance.md}
+├── docs/
+│   ├── runbook.md                    # 运行说明（含 Dify 1.19 适配）
+│   ├── acceptance.md                 # 验收对照
+│   └── verification.md               # 端到端实测记录
 └── README.md
 ```
 
