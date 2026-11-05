@@ -1,0 +1,566 @@
+app:
+  description: 深夜酒馆·阿九：用 Dify 编排、seekdb 存记忆的跨会话角色互动小游戏。
+  icon: 🥃
+  icon_background: '#FFEAD5'
+  mode: advanced-chat
+  name: 深夜酒馆 · 阿九（含 URI 编码）
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 500
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 100
+        video_file_size_limit: 500
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: （门上的铜铃响了一下）阿九擦着杯子抬头：“外边冷吧？坐。今天想喝点什么，还是先说说今天怎么了？”
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - 今天加班到十一点，老板还在群里发消息
+    - 我又来了，老样子
+    - 上周我是不是跟你说过一件很丢脸的事？
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - id: edge-start-encode
+      source: '1810000000001'
+      sourceHandle: source
+      target: '1810000000101'
+      targetHandle: target
+    - id: edge-encode-recall
+      source: '1810000000101'
+      sourceHandle: source
+      target: '1810000000002'
+      targetHandle: target
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: code
+      id: 1810000000002-source-1810000000003-target
+      source: '1810000000002'
+      sourceHandle: source
+      target: '1810000000003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 1810000000003-source-1810000000004-target
+      source: '1810000000003'
+      sourceHandle: source
+      target: '1810000000004'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 1810000000004-source-1810000000005-target
+      source: '1810000000004'
+      sourceHandle: source
+      target: '1810000000005'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 1810000000005-source-1810000000006-target
+      source: '1810000000005'
+      sourceHandle: source
+      target: '1810000000006'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: 1810000000006-source-1810000000007-target
+      source: '1810000000006'
+      sourceHandle: source
+      target: '1810000000007'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: http-request
+      id: 1810000000007-true-1810000000008-target
+      source: '1810000000007'
+      sourceHandle: 'true'
+      target: '1810000000008'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: 1810000000007-false-1810000000010-target
+      source: '1810000000007'
+      sourceHandle: 'false'
+      target: '1810000000010'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: http-request
+        targetType: answer
+      id: 1810000000008-source-1810000000009-target
+      source: '1810000000008'
+      sourceHandle: source
+      target: '1810000000009'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 你的名字（用于区分不同客人的记忆）
+          max_length: 32
+          options: []
+          required: true
+          type: text-input
+          variable: user_id
+      height: 110
+      id: '1810000000001'
+      position:
+        x: 40
+        y: 300
+      positionAbsolute:
+        x: 40
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 取记忆与酒馆设定
+        type: http-request
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: []
+          type: none
+        headers: 'Content-Type: application/json'
+        method: post
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 200
+        ssl_verify: true
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 30
+          max_write_timeout: 30
+        url: http://172.20.0.1:8791/api/recall?user_id={{#1810000000101.user_id_enc#}}&message={{#1810000000101.query_enc#}}
+        variables: []
+      height: 140
+      id: '1810000000002'
+      position:
+        x: 500
+        y: 300
+      positionAbsolute:
+        x: 500
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 解析召回结果
+        type: code
+        code: "import json\n\n\ndef main(raw: str) -> dict:\n    data = {}\n    try:\n        data = json.loads(raw or \"{}\")\n    except Exception:\n        data = {}\n    memory_block = str(data.get(\"memory_block\") or \"（这位客人是第一次来，还没有任何记忆）\")\n    lore_block = str(data.get(\"lore_block\") or \"（今晚没有特别的酒单提示）\")\n    return {\n        \"memory_block\": memory_block,\n        \"lore_block\": lore_block,\n        \"memory_count\": str(data.get(\"memory_count\", 0)),\n        \"lore_count\": str(data.get(\"lore_count\", 0)),\n    }\n"
+        code_language: python3
+        outputs:
+          memory_block:
+            children: null
+            type: string
+          lore_block:
+            children: null
+            type: string
+          memory_count:
+            children: null
+            type: string
+          lore_count:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '1810000000002'
+          - body
+          value_type: string
+          variable: raw
+      height: 140
+      id: '1810000000003'
+      position:
+        x: 720
+        y: 300
+      positionAbsolute:
+        x: 720
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 阿九调酒
+        type: llm
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            max_tokens: 1024
+            temperature: 0.7
+            enable_thinking: false
+        prompt_template:
+        - id: p-barkeep-system
+          role: system
+          text: '你是「深夜酒馆」的酒保阿九。说话慢，话不多，语气像一张放过很多遍的旧唱片。
+
+
+            每次回应请遵守：
+
+            1. 先为客人调一杯酒，给它起一个 2~6 个字的名字（用《》括住），再写一句台词（不超过两行）。
+
+            2. 【这位客人的记忆】里的事实必须用上，但不许编造记忆里没有的过去。记忆为空时，就当他是第一次来，不要假装早就认识。
+
+            3. 可以自然引用【酒馆设定】里的店规、酒单或老梗，一次最多引用两条，不要整段背诵。
+
+            4. 不要解释你在做什么，不要输出 JSON，不要堆砌表情符号。'
+        - id: p-barkeep-user
+          role: user
+          text: '【这位客人的记忆】
+
+            {{#1810000000003.memory_block#}}
+
+
+            【酒馆设定】
+
+            {{#1810000000003.lore_block#}}
+
+
+            客人刚说：{{#sys.query#}}'
+        variables: []
+        vision:
+          enabled: false
+      height: 130
+      id: '1810000000004'
+      position:
+        x: 1060
+        y: 300
+      positionAbsolute:
+        x: 1060
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 抽取可记的事
+        type: llm
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          provider: langgenius/openai_api_compatible/openai_api_compatible
+          name: qwen2.5:7b
+          mode: chat
+          completion_params:
+            max_tokens: 1024
+            temperature: 0.7
+            enable_thinking: false
+        prompt_template:
+        - id: p-memory-system
+          role: system
+          text: '你负责从对话里抽取“值得记住的客人事实”，供酒保下次回忆。
+
+
+            只输出一个 JSON 对象，不要输出任何其它文字：
+
+            {"remember": "yes" 或 "no", "fact": "一句话，第三人称，最多 40 字"}
+
+
+            判断规则：
+
+            - 记录稳定的信息或重要经历：工作/学业状态、口味与忌口、情绪事件、约定、称呼、正在经历的难事。
+
+            - 不记录：寒暄、点单动作、对酒的评价、酒保自己说的话。
+
+            - 没有可记的内容时返回 {"remember": "no", "fact": ""}。'
+        - id: p-memory-user
+          role: user
+          text: '客人说：{{#sys.query#}}
+
+            阿九回应：{{#1810000000004.text#}}'
+        variables: []
+        vision:
+          enabled: false
+      height: 130
+      id: '1810000000005'
+      position:
+        x: 1400
+        y: 300
+      positionAbsolute:
+        x: 1400
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 解析记忆 JSON
+        type: code
+        code: "import json\nimport re\n\n\ndef main(raw: str) -> dict:\n    text = (raw or \"\").strip()\n    if text.startswith(\"```\"):\n        text = re.sub(r\"^```[a-zA-Z]*\\n?\", \"\", text)\n        text = re.sub(r\"\\n?```$\", \"\", text).strip()\n    match = re.search(r\"\\{[\\s\\S]*\\}\", text)\n    if match:\n        text = match.group(0)\n    remember, fact = \"no\", \"\"\n    try:\n        data = json.loads(text)\n        remember = \"yes\" if str(data.get(\"remember\", \"\")).strip().lower() in (\"yes\", \"true\", \"1\") else \"no\"\n        fact = str(data.get(\"fact\", \"\")).strip()[:120]\n    except Exception:\n        remember, fact = \"no\", \"\"\n    if not fact:\n        remember = \"no\"\n    return {\"should_remember\": remember, \"fact\": fact}\n"
+        code_language: python3
+        outputs:
+          should_remember:
+            children: null
+            type: string
+          fact:
+            children: null
+            type: string
+        variables:
+        - value_selector:
+          - '1810000000005'
+          - text
+          value_type: string
+          variable: raw
+      height: 130
+      id: '1810000000006'
+      position:
+        x: 1740
+        y: 300
+      positionAbsolute:
+        x: 1740
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 要不要写入记忆
+        type: if-else
+        cases:
+        - case_id: case-remember-yes
+          conditions:
+          - comparison_operator: is
+            id: cond-should-remember
+            value: 'yes'
+            varType: string
+            variable_selector:
+            - '1810000000006'
+            - should_remember
+          id: case-remember-yes
+          logical_operator: and
+      height: 200
+      id: '1810000000007'
+      position:
+        x: 2080
+        y: 300
+      positionAbsolute:
+        x: 2080
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 写入 seekdb 记忆
+        type: http-request
+        authorization:
+          config: null
+          type: no-auth
+        body:
+          data: []
+          type: none
+        headers: 'Content-Type: application/json'
+        method: get
+        params: ''
+        retry_config:
+          max_retries: 2
+          retry_enabled: true
+          retry_interval: 200
+        ssl_verify: true
+        timeout:
+          max_connect_timeout: 10
+          max_read_timeout: 30
+          max_write_timeout: 30
+        url: http://172.20.0.1:8791/api/remember?user_id={{#1810000000001.user_id#}}&fact={{#1810000000006.fact#}}
+        variables: []
+      height: 140
+      id: '1810000000008'
+      position:
+        x: 2420
+        y: 180
+      positionAbsolute:
+        x: 2420
+        y: 180
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 回复（已记住）
+        type: answer
+        answer: '{{#1810000000004.text#}}'
+        variables: []
+      height: 110
+      id: '1810000000009'
+      position:
+        x: 2760
+        y: 180
+      positionAbsolute:
+        x: 2760
+        y: 180
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        selected: false
+        title: 回复
+        type: answer
+        answer: '{{#1810000000004.text#}}'
+        variables: []
+      height: 110
+      id: '1810000000010'
+      position:
+        x: 2760
+        y: 420
+      positionAbsolute:
+        x: 2760
+        y: 420
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        type: code
+        title: 编码输入(URI)
+        desc: 把 user_id 与 query 做百分号编码，避免中文/空格破坏 URL
+        selected: false
+        code_language: python3
+        code: "import urllib.parse\n\n\ndef main(user_id: str, query: str) -> dict:\n    \"\"\"把要拼进 URL 的参数做百分号编码。\n\n    Dify 的 HTTP 节点会原样拼接变量，中文、空格、& ? # 等字符\n    会让服务端解析出错，所以拼 URL 前统一编码。\n    \"\"\"\n    uid = (user_id or \"guest\").strip() or \"guest\"\n    q = query or \"\"\n    return {\n        \"user_id_enc\": urllib.parse.quote(uid, safe=\"\"),\n        \"query_enc\": urllib.parse.quote(q, safe=\"\"),\n    }\n"
+        outputs:
+          user_id_enc:
+            children: null
+            type: string
+          query_enc:
+            children: null
+            type: string
+        variables:
+        - variable: user_id
+          value_selector:
+          - '1810000000001'
+          - user_id
+        - variable: query
+          value_selector:
+          - sys
+          - query
+      height: 100
+      id: '1810000000101'
+      position:
+        x: 200
+        y: 300
+      positionAbsolute:
+        x: 200
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.6

@@ -74,18 +74,22 @@ curl -s http://127.0.0.1:8791/api/health
 
 ## 5. 导入 Dify 应用
 
-有两个 DSL 文件，按你的 Dify 版本选一个：
+有四个 DSL 文件，按用途选：
 
 | 文件 | 适用版本 | 说明 |
 | --- | --- | --- |
+| `dsl/jiuguan-a-jiu.verified-run.yml` | **Dify 1.19.x** | **从真实运行过的实例导出**，两个 LLM 节点已绑定 `MinMax-M3`。复现本次验证记录请用这个 |
+| `dsl/jiuguan-a-jiu.dify-1.19-encoded.yml` | Dify 1.19.x | 通用模板 + 新增 URI 编码节点（评审用中文输入也不会破坏 URL），模型为占位符 |
+| `dsl/jiuguan-a-jiu.dify-1.19.yml` | Dify 1.19.x | 通用模板：GET + URL 参数，变量用节点 ID 引用，模型为占位符 |
 | `dsl/jiuguan-a-jiu.chatflow.yml` | Dify 1.4.x | 原始版本，HTTP 节点用 POST + JSON body |
-| `dsl/jiuguan-a-jiu.dify-1.19.yml` | **Dify 1.19.x（实测通过）** | 适配版：GET + URL 参数，变量用节点 ID 引用 |
 
-**Dify 1.19 用户请用第二个文件**，原因见第 6 节「版本适配说明」。
+**推荐**：想直接看到已验证的效果，用 `verified-run`；想接自己的模型，用 `dify-1.19-encoded`（自带 URI 编码，更稳）。
 
 1. **安装模型插件**（若尚未安装）：Dify → 插件 → 安装 `OpenAI-API-compatible`，配置你的模型服务（Base URL / Key / 模型名）。
-2. **导入 DSL**：Dify → 工作室 → 导入 DSL → 选择 `dify/dsl/jiuguan-a-jiu.dify-1.19.yml`（导入后应用名「深夜酒馆 · 阿九」）。
-3. **绑定模型**：打开应用，依次点开 **「阿九调酒」** 与 **「抽取可记的事」** 两个 LLM 节点，把模型换成第 1 步配置的模型（temperature 建议 0.7 / 0.2）。
+2. **导入 DSL**：Dify → 工作室 → 导入 DSL → 选择上表中合适的文件。
+   - 用 `verified-run` 时，模型已绑定 `MinMax-M3`，你只需把该 provider 的 Key / Base URL 指到自己的服务；
+   - 用 `dify-1.19-encoded` 时，需把两个 LLM 节点改成你的模型。
+3. **绑定模型**：打开应用，依次点开 **「阿九调酒」** 与 **「抽取可记的事」** 两个 LLM 节点，确认模型可用（temperature 建议 0.7 / 0.2）。
 4. **确认后端地址**：DSL 里写的是 `http://172.20.0.1:8791`（Docker 默认网桥网关）。**你的环境网桥网段可能不同**，用下面命令查到后再改：
    ```bash
    docker network inspect docker_default --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'

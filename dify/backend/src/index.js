@@ -20,6 +20,19 @@ app.use((req, res, next) => {
 const asText = (value) => (typeof value === "string" ? value.trim() : "");
 const fail = (res, status, message) => res.status(status).json({ ok: false, error: message });
 
+// user_id 是记忆隔离的唯一键。做基本规整，避免：
+//  - 超长值撑爆索引/日志
+//  - 控制字符与空白导致的「同名不同键」
+// 注意：这是格式规整，不是身份认证。本项目为单机演示，
+//      生产场景应把 user_id 绑定到登录态（见 README「已知限制」）。
+const MAX_USER_ID_LEN = 64;
+function normalizeUserId(raw) {
+  const text = asText(raw);
+  if (!text) return "guest";
+  const cleaned = text.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, MAX_USER_ID_LEN).trim();
+  return cleaned || "guest";
+}
+
 function memoryBlock(memories) {
   if (!memories.length) {
     return "（这位客人是第一次来，还没有任何记忆）";
@@ -57,7 +70,7 @@ function pickInput(req, ...names) {
 }
 
 async function recallHandler(req, res) {
-  const userId = pickInput(req, "user_id") || "guest";
+  const userId = normalizeUserId(pickInput(req, "user_id"));
   const message = pickInput(req, "message", "query");
   if (!message) {
     fail(res, 400, "message 不能为空");
@@ -91,7 +104,7 @@ app.post("/api/recall", recallHandler);
 app.get("/api/recall", recallHandler);
 
 async function rememberHandler(req, res) {
-  const userId = pickInput(req, "user_id") || "guest";
+  const userId = normalizeUserId(pickInput(req, "user_id"));
   const fact = pickInput(req, "fact");
   if (!fact) {
     fail(res, 400, "fact 不能为空");

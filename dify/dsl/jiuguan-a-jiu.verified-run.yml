@@ -1,0 +1,638 @@
+{
+  "app": {
+    "description": "深夜酒馆·阿九：用 Dify 编排、seekdb 存记忆的跨会话角色互动小游戏。",
+    "icon": "🍶",
+    "icon_background": "#FFEAD5",
+    "mode": "advanced-chat",
+    "name": "深夜酒馆 · 阿九（实测版）",
+    "use_icon_as_answer_icon": false,
+    "name_note": "本文件从实际运行过的 Dify 1.19 实例导出，LLM 节点已绑定 MinMax-M3。"
+  },
+  "dependencies": [],
+  "kind": "app",
+  "version": "0.4.0",
+  "workflow": {
+    "conversation_variables": [],
+    "environment_variables": [],
+    "features": {
+      "file_upload": {
+        "enabled": false
+      },
+      "opening_statement": "（门上的铜铃响了一下）阿九擦着杯子抬头：\n\n“外边冷吧？坐。今天想喝点什么，还是先说说今天怎么了？”",
+      "retriever_resource": {
+        "enabled": true
+      },
+      "sensitive_word_avoidance": {
+        "enabled": false
+      },
+      "speech_to_text": {
+        "enabled": false
+      },
+      "suggested_questions": [
+        "今天加班到十一点，老板还在群里发消息",
+        "我又来了，老样子",
+        "上周我是不是跟你说过一件很丢脸的事？"
+      ],
+      "suggested_questions_after_answer": {
+        "enabled": false
+      },
+      "text_to_speech": {
+        "enabled": false
+      }
+    },
+    "graph": {
+      "nodes": [
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000001",
+          "positionAbsolute": {
+            "x": 40,
+            "y": 300
+          },
+          "data": {
+            "desc": "",
+            "type": "start",
+            "title": "开始",
+            "variables": [
+              {
+                "label": "你的名字（用于区分不同客人的记忆）",
+                "required": true,
+                "options": [],
+                "type": "text-input",
+                "variable": "user_id",
+                "max_length": 32
+              }
+            ],
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 40
+          },
+          "type": "custom",
+          "height": 109,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000002",
+          "positionAbsolute": {
+            "x": 380,
+            "y": 300
+          },
+          "data": {
+            "desc": "",
+            "retry_config": {
+              "max_retries": 2,
+              "retry_interval": 200,
+              "retry_enabled": true
+            },
+            "timeout": {
+              "max_connect_timeout": 10,
+              "max_write_timeout": 30,
+              "max_read_timeout": 30
+            },
+            "params": "",
+            "authorization": {
+              "config": null,
+              "type": "no-auth"
+            },
+            "variables": [],
+            "headers": "Content-Type: application/json",
+            "method": "post",
+            "title": "取记忆与酒馆设定",
+            "ssl_verify": true,
+            "body": {
+              "data": [],
+              "type": "none"
+            },
+            "type": "http-request",
+            "url": "http://172.20.0.1:8791/api/recall?user_id={{#1810000000001.user_id#}}&message={{#sys.query#}}",
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 380
+          },
+          "type": "custom",
+          "height": 158,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000003",
+          "positionAbsolute": {
+            "x": 720,
+            "y": 300
+          },
+          "data": {
+            "code": "import json\n\n\ndef main(raw: str) -> dict:\n    data = {}\n    try:\n        data = json.loads(raw or \"{}\")\n    except Exception:\n        data = {}\n    memory_block = str(data.get(\"memory_block\") or \"（这位客人是第一次来，还没有任何记忆）\")\n    lore_block = str(data.get(\"lore_block\") or \"（今晚没有特别的酒单提示）\")\n    return {\n        \"memory_block\": memory_block,\n        \"lore_block\": lore_block,\n        \"memory_count\": str(data.get(\"memory_count\", 0)),\n        \"lore_count\": str(data.get(\"lore_count\", 0)),\n    }\n",
+            "code_language": "python3",
+            "desc": "",
+            "title": "解析召回结果",
+            "outputs": {
+              "memory_count": {
+                "type": "string",
+                "children": null
+              },
+              "memory_block": {
+                "type": "string",
+                "children": null
+              },
+              "lore_block": {
+                "type": "string",
+                "children": null
+              },
+              "lore_count": {
+                "type": "string",
+                "children": null
+              }
+            },
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "1810000000002",
+                  "body"
+                ],
+                "value_type": "string",
+                "variable": "raw"
+              }
+            ],
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 720
+          },
+          "type": "custom",
+          "height": 52,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000004",
+          "positionAbsolute": {
+            "x": 1060,
+            "y": 300
+          },
+          "data": {
+            "variables": [],
+            "prompt_template": [
+              {
+                "id": "p-barkeep-system",
+                "role": "system",
+                "text": "你是「深夜酒馆」的酒保阿九。说话慢，话不多，语气像一张放过很多遍的旧唱片。\n\n每次回应请遵守：\n1. 先为客人调一杯酒，给它起一个 2~6 个字的名字（用《》括住），再写一句台词（不超过两行）。\n2. 【这位客人的记忆】里的事实必须用上，但不许编造记忆里没有的过去。记忆为空时，就当他是第一次来，不要假装早就认识。\n3. 可以自然引用【酒馆设定】里的店规、酒单或老梗，一次最多引用两条，不要整段背诵。\n4. 不要解释你在做什么，不要输出 JSON，不要堆砌表情符号。"
+              },
+              {
+                "id": "p-barkeep-user",
+                "role": "user",
+                "text": "【这位客人的记忆】\n{{#1810000000003.memory_block#}}\n\n【酒馆设定】\n{{#1810000000003.lore_block#}}\n\n客人刚说：{{#sys.query#}}"
+              }
+            ],
+            "desc": "",
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "title": "阿九调酒",
+            "model_selector": null,
+            "type": "llm",
+            "vision": {
+              "enabled": false
+            },
+            "model": {
+              "name": "MinMax-M3",
+              "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+              "completion_params": {
+                "max_tokens": 1024,
+                "temperature": 0.7
+              },
+              "mode": "chat"
+            },
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 1060
+          },
+          "type": "custom",
+          "height": 88,
+          "selected": true,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000005",
+          "positionAbsolute": {
+            "x": 1400,
+            "y": 300
+          },
+          "data": {
+            "variables": [],
+            "prompt_template": [
+              {
+                "id": "p-memory-system",
+                "role": "system",
+                "text": "你负责从对话里抽取“值得记住的客人事实”，供酒保下次回忆。\n\n只输出一个 JSON 对象，不要输出任何其它文字：\n{\"remember\": \"yes\" 或 \"no\", \"fact\": \"一句话，第三人称，最多 40 字\"}\n\n判断规则：\n- 记录稳定的信息或重要经历：工作/学业状态、口味与忌口、情绪事件、约定、称呼、正在经历的难事。\n- 不记录：寒暄、点单动作、对酒的评价、酒保自己说的话。\n- 没有可记的内容时返回 {\"remember\": \"no\", \"fact\": \"\"}。"
+              },
+              {
+                "id": "p-memory-user",
+                "role": "user",
+                "text": "客人说：{{#sys.query#}}\n阿九回应：{{#1810000000004.text#}}"
+              }
+            ],
+            "desc": "",
+            "context": {
+              "enabled": false,
+              "variable_selector": []
+            },
+            "title": "抽取可记的事",
+            "model_selector": null,
+            "type": "llm",
+            "vision": {
+              "enabled": false
+            },
+            "model": {
+              "name": "MinMax-M3",
+              "provider": "langgenius/openai_api_compatible/openai_api_compatible",
+              "completion_params": {
+                "max_tokens": 1024,
+                "temperature": 0.7
+              },
+              "mode": "chat"
+            },
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 1400
+          },
+          "type": "custom",
+          "height": 88,
+          "selected": true,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000006",
+          "positionAbsolute": {
+            "x": 1740,
+            "y": 300
+          },
+          "data": {
+            "code": "import json\nimport re\n\n\ndef main(raw: str) -> dict:\n    text = (raw or \"\").strip()\n    if text.startswith(\"```\"):\n        text = re.sub(r\"^```[a-zA-Z]*\\n?\", \"\", text)\n        text = re.sub(r\"\\n?```$\", \"\", text).strip()\n    match = re.search(r\"\\{[\\s\\S]*\\}\", text)\n    if match:\n        text = match.group(0)\n    remember, fact = \"no\", \"\"\n    try:\n        data = json.loads(text)\n        remember = \"yes\" if str(data.get(\"remember\", \"\")).strip().lower() in (\"yes\", \"true\", \"1\") else \"no\"\n        fact = str(data.get(\"fact\", \"\")).strip()[:120]\n    except Exception:\n        remember, fact = \"no\", \"\"\n    if not fact:\n        remember = \"no\"\n    return {\"should_remember\": remember, \"fact\": fact}\n",
+            "code_language": "python3",
+            "desc": "",
+            "title": "解析记忆 JSON",
+            "outputs": {
+              "should_remember": {
+                "type": "string",
+                "children": null
+              },
+              "fact": {
+                "type": "string",
+                "children": null
+              }
+            },
+            "type": "code",
+            "variables": [
+              {
+                "value_selector": [
+                  "1810000000005",
+                  "text"
+                ],
+                "value_type": "string",
+                "variable": "raw"
+              }
+            ],
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 1740
+          },
+          "type": "custom",
+          "height": 52,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000007",
+          "positionAbsolute": {
+            "x": 2080,
+            "y": 300
+          },
+          "data": {
+            "cases": [
+              {
+                "case_id": "case-remember-yes",
+                "conditions": [
+                  {
+                    "varType": "string",
+                    "variable_selector": [
+                      "1810000000006",
+                      "should_remember"
+                    ],
+                    "comparison_operator": "is",
+                    "value": "yes",
+                    "id": "cond-should-remember"
+                  }
+                ],
+                "logical_operator": "and",
+                "id": "case-remember-yes"
+              }
+            ],
+            "desc": "",
+            "title": "要不要写入记忆",
+            "type": "if-else",
+            "selected": false
+          },
+          "position": {
+            "y": 300,
+            "x": 2080
+          },
+          "type": "custom",
+          "height": 148,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000008",
+          "positionAbsolute": {
+            "x": 2420,
+            "y": 180
+          },
+          "data": {
+            "desc": "",
+            "retry_config": {
+              "max_retries": 2,
+              "retry_interval": 200,
+              "retry_enabled": true
+            },
+            "timeout": {
+              "max_connect_timeout": 10,
+              "max_write_timeout": 30,
+              "max_read_timeout": 30
+            },
+            "params": "",
+            "authorization": {
+              "config": null,
+              "type": "no-auth"
+            },
+            "variables": [],
+            "headers": "Content-Type: application/json",
+            "method": "get",
+            "title": "写入 seekdb 记忆",
+            "ssl_verify": true,
+            "body": {
+              "data": [],
+              "type": "none"
+            },
+            "type": "http-request",
+            "url": "http://172.20.0.1:8791/api/remember?user_id={{#1810000000001.user_id#}}&fact={{#1810000000006.fact#}}",
+            "selected": false
+          },
+          "position": {
+            "y": 180,
+            "x": 2420
+          },
+          "type": "custom",
+          "height": 174,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000009",
+          "positionAbsolute": {
+            "x": 2760,
+            "y": 180
+          },
+          "data": {
+            "answer": "{{#1810000000004.text#}}",
+            "desc": "",
+            "title": "回复（已记住）",
+            "type": "answer",
+            "variables": [],
+            "selected": false
+          },
+          "position": {
+            "y": 180,
+            "x": 2760
+          },
+          "type": "custom",
+          "height": 102,
+          "selected": false,
+          "width": 242
+        },
+        {
+          "sourcePosition": "right",
+          "targetPosition": "left",
+          "zIndex": 0,
+          "id": "1810000000010",
+          "positionAbsolute": {
+            "x": 2760,
+            "y": 420
+          },
+          "data": {
+            "answer": "{{#1810000000004.text#}}",
+            "desc": "",
+            "title": "回复",
+            "type": "answer",
+            "variables": [],
+            "selected": false
+          },
+          "position": {
+            "y": 420,
+            "x": 2760
+          },
+          "type": "custom",
+          "height": 102,
+          "selected": false,
+          "width": 242
+        }
+      ],
+      "edges": [
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000001-source-1810000000002-target",
+          "target": "1810000000002",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "start",
+            "targetType": "http-request"
+          },
+          "targetHandle": "target",
+          "source": "1810000000001",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000002-source-1810000000003-target",
+          "target": "1810000000003",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "http-request",
+            "targetType": "code"
+          },
+          "targetHandle": "target",
+          "source": "1810000000002",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000003-source-1810000000004-target",
+          "target": "1810000000004",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "code",
+            "targetType": "llm"
+          },
+          "targetHandle": "target",
+          "source": "1810000000003",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000004-source-1810000000005-target",
+          "target": "1810000000005",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "llm",
+            "targetType": "llm"
+          },
+          "targetHandle": "target",
+          "source": "1810000000004",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000005-source-1810000000006-target",
+          "target": "1810000000006",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "llm",
+            "targetType": "code"
+          },
+          "targetHandle": "target",
+          "source": "1810000000005",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000006-source-1810000000007-target",
+          "target": "1810000000007",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "code",
+            "targetType": "if-else"
+          },
+          "targetHandle": "target",
+          "source": "1810000000006",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "case-remember-yes",
+          "id": "1810000000007-case-remember-yes-1810000000008-target",
+          "target": "1810000000008",
+          "type": "custom",
+          "targetHandle": "target",
+          "source": "1810000000007",
+          "data": {
+            "sourceType": "if-else",
+            "targetType": "http-request",
+            "isInIteration": false,
+            "isInLoop": false
+          }
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "false",
+          "id": "1810000000007-false-1810000000010-target",
+          "target": "1810000000010",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "if-else",
+            "targetType": "answer"
+          },
+          "targetHandle": "target",
+          "source": "1810000000007",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "true",
+          "id": "1810000000007-true-1810000000008-target",
+          "target": "1810000000008",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "if-else",
+            "targetType": "http-request"
+          },
+          "targetHandle": "target",
+          "source": "1810000000007",
+          "type": "custom"
+        },
+        {
+          "zIndex": 0,
+          "sourceHandle": "source",
+          "id": "1810000000008-source-1810000000009-target",
+          "target": "1810000000009",
+          "data": {
+            "isInIteration": false,
+            "isInLoop": false,
+            "sourceType": "http-request",
+            "targetType": "answer"
+          },
+          "targetHandle": "target",
+          "source": "1810000000008",
+          "type": "custom"
+        }
+      ],
+      "viewport": {
+        "x": 18.440600362798705,
+        "y": 402.95496266035343,
+        "zoom": 0.40451276311000567
+      }
+    }
+  }
+}
