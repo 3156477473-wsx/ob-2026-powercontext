@@ -1,0 +1,6 @@
+# seekdb 中的记忆（dify_memory collection），查询时间：2026-11-07T21:56:44+08:00
+# 库：dify_jiuguan  端口：2882  账号：root
+Tables_in_dify_jiuguan
+c$v2$f51e6abbdab211f1910500155dd0d02d
+c$v2$f529f3d6dab211f1910500155dd0d02d
+sdk_collections

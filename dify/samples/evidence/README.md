@@ -119,3 +119,17 @@ docker exec docker-db_postgres-1 psql -U postgres -d dify -t -A -c \
 | `user_id` 手填可冒充 | 属演示限制：本项目是单用户本地演示，未做身份认证。生产场景应把 `user_id` 绑定到登录态（详见「已知限制」） |
 | `sys.query` 未编码拼 URL | 已作为改进项：建议在 HTTP 节点前加 Code 节点做 `encodeURIComponent` |
 | `EMBED_MODE=hash` 词法近似 | 已在 README 说明；可切 `EMBED_MODE=local` 使用 MiniLM 语义向量 |
+
+---
+
+## 补充：原始 SSE 事件流（2026-11-07）
+
+| 文件 | 内容 |
+| --- | --- |
+| `run{1..4}.sse.jsonl` | Dify Service API（`POST /v1/chat-messages`, streaming）返回的**原始 SSE**，未编辑，含 `workflow_started` / `node_finished` / `workflow_finished` |
+| `chat_transcript.json` | 四轮汇总：`workflow_run_id`、`conversation_id`、召回记忆数、节点清单与耗时 |
+| `recall_after_remember.json` | 验证后直接查后端 `/api/recall` 的结果（命中第 1 轮写入的事实） |
+| `seekdb_tables.txt` | 验证后 `dify_jiuguan` 库的表清单 |
+
+复现：`python3 tools/import_and_run.py --console ... --email ... --password ... --out samples/evidence`。
+过程说明见 [`../../docs/verification-sse.md`](../../docs/verification-sse.md)。

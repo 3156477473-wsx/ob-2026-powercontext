@@ -1,0 +1,502 @@
+[
+  {
+    "turn": 1,
+    "user": "老周",
+    "query": "我叫老周，做审计的，喜欢苦一点的酒。",
+    "conversation_id": "d846fe66-2674-457e-bd51-c7f3cb83da62",
+    "workflow_run_id": "2a68f474-fbf9-4856-a0ae-e2b43599bcd5",
+    "elapsed_sec": 1.76,
+    "answer": "《长夜号》\n早点睡。",
+    "recall": {
+      "memory_count": "0",
+      "lore_count": "3",
+      "memory_block": "（这位客人是第一次来，还没有任何记忆）"
+    },
+    "remember": {
+      "status": "succeeded",
+      "status_code": 200,
+      "body": "{\"ok\":true,\"user_id\":\"老周\",\"fact\":\"我叫老周，做审计的，喜欢苦一点的酒。\",\"stored\":\"mem:老周|老周:1794059763033:2\",\"count\":3}"
+    },
+    "node_finished": [
+      {
+        "title": "开始",
+        "node_type": "start",
+        "status": "succeeded",
+        "elapsed_time": 8.1e-05,
+        "total_tokens": null
+      },
+      {
+        "title": "构造召回请求体",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.054306,
+        "total_tokens": null
+      },
+      {
+        "title": "取记忆与酒馆设定",
+        "node_type": "http-request",
+        "status": "succeeded",
+        "elapsed_time": 0.097234,
+        "total_tokens": null
+      },
+      {
+        "title": "解析召回结果",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.052675,
+        "total_tokens": null
+      },
+      {
+        "title": "阿九调酒",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.35654,
+        "total_tokens": 272
+      },
+      {
+        "title": "抽取可记的事",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.867912,
+        "total_tokens": 216
+      },
+      {
+        "title": "解析记忆 JSON",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.060384,
+        "total_tokens": null
+      },
+      {
+        "title": "要不要写入记忆",
+        "node_type": "if-else",
+        "status": "succeeded",
+        "elapsed_time": 0.00014,
+        "total_tokens": null
+      },
+      {
+        "title": "构造记忆请求体",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.05811,
+        "total_tokens": null
+      },
+      {
+        "title": "写入 seekdb 记忆",
+        "node_type": "http-request",
+        "status": "succeeded",
+        "elapsed_time": 0.025619,
+        "total_tokens": null
+      },
+      {
+        "title": "回复（已记住）",
+        "node_type": "answer",
+        "status": "succeeded",
+        "elapsed_time": 0.000124,
+        "total_tokens": null
+      }
+    ],
+    "event_names": [
+      "workflow_started",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "message_end",
+      "workflow_finished"
+    ]
+  },
+  {
+    "turn": 2,
+    "user": "老周",
+    "query": "还记得我叫什么、做什么工作的吗？",
+    "conversation_id": "d846fe66-2674-457e-bd51-c7f3cb83da62",
+    "workflow_run_id": "88889947-9221-458b-b90c-533b66eebb95",
+    "elapsed_sec": 2.43,
+    "answer": "《长夜号》；你记得我叫什么、做什么工作的吗？",
+    "recall": {
+      "memory_count": "1",
+      "lore_count": "3",
+      "memory_block": "- 我叫老周，做审计的，喜欢苦一点的酒。"
+    },
+    "remember": {},
+    "node_finished": [
+      {
+        "title": "开始",
+        "node_type": "start",
+        "status": "succeeded",
+        "elapsed_time": 8.5e-05,
+        "total_tokens": null
+      },
+      {
+        "title": "构造召回请求体",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.049876,
+        "total_tokens": null
+      },
+      {
+        "title": "取记忆与酒馆设定",
+        "node_type": "http-request",
+        "status": "succeeded",
+        "elapsed_time": 0.038275,
+        "total_tokens": null
+      },
+      {
+        "title": "解析召回结果",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.061849,
+        "total_tokens": null
+      },
+      {
+        "title": "阿九调酒",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 1.3566,
+        "total_tokens": 270
+      },
+      {
+        "title": "抽取可记的事",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.721147,
+        "total_tokens": 205
+      },
+      {
+        "title": "解析记忆 JSON",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.058188,
+        "total_tokens": null
+      },
+      {
+        "title": "要不要写入记忆",
+        "node_type": "if-else",
+        "status": "succeeded",
+        "elapsed_time": 0.000146,
+        "total_tokens": null
+      },
+      {
+        "title": "回复",
+        "node_type": "answer",
+        "status": "succeeded",
+        "elapsed_time": 9.1e-05,
+        "total_tokens": null
+      }
+    ],
+    "event_names": [
+      "workflow_started",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "message_end",
+      "workflow_finished"
+    ]
+  },
+  {
+    "turn": 3,
+    "user": "小林",
+    "query": "第一次来，有什么推荐？",
+    "conversation_id": "e3aed62e-c98c-4803-b684-51a310595c0d",
+    "workflow_run_id": "d53941fd-b406-4e5d-b6a7-46f7ac2734c6",
+    "elapsed_sec": 1.61,
+    "answer": "《通宵地铁》\n我推荐你尝尝《通宵地铁》，感觉很特别。",
+    "recall": {
+      "memory_count": "0",
+      "lore_count": "3",
+      "memory_block": "（这位客人是第一次来，还没有任何记忆）"
+    },
+    "remember": {},
+    "node_finished": [
+      {
+        "title": "开始",
+        "node_type": "start",
+        "status": "succeeded",
+        "elapsed_time": 8.2e-05,
+        "total_tokens": null
+      },
+      {
+        "title": "构造召回请求体",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.052146,
+        "total_tokens": null
+      },
+      {
+        "title": "取记忆与酒馆设定",
+        "node_type": "http-request",
+        "status": "succeeded",
+        "elapsed_time": 0.030333,
+        "total_tokens": null
+      },
+      {
+        "title": "解析召回结果",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.06382,
+        "total_tokens": null
+      },
+      {
+        "title": "阿九调酒",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.650177,
+        "total_tokens": 269
+      },
+      {
+        "title": "抽取可记的事",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.588788,
+        "total_tokens": 198
+      },
+      {
+        "title": "解析记忆 JSON",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.060647,
+        "total_tokens": null
+      },
+      {
+        "title": "要不要写入记忆",
+        "node_type": "if-else",
+        "status": "succeeded",
+        "elapsed_time": 0.000123,
+        "total_tokens": null
+      },
+      {
+        "title": "回复",
+        "node_type": "answer",
+        "status": "succeeded",
+        "elapsed_time": 9.3e-05,
+        "total_tokens": null
+      }
+    ],
+    "event_names": [
+      "workflow_started",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "message_end",
+      "workflow_finished"
+    ]
+  },
+  {
+    "turn": 4,
+    "user": "阿旺",
+    "query": "他说：“来杯\"苦\"的”。\n顺便问下，你们有「烟熏」味道的吗？",
+    "conversation_id": "8b5c9be4-6c46-4388-b4af-27240e65326f",
+    "workflow_run_id": "0f2c0f98-8552-43e0-8249-ac661bef5af4",
+    "elapsed_sec": 1.58,
+    "answer": "《加班的海》；来杯\"苦\"的。",
+    "recall": {
+      "memory_count": "0",
+      "lore_count": "3",
+      "memory_block": "（这位客人是第一次来，还没有任何记忆）"
+    },
+    "remember": {},
+    "node_finished": [
+      {
+        "title": "开始",
+        "node_type": "start",
+        "status": "succeeded",
+        "elapsed_time": 8.3e-05,
+        "total_tokens": null
+      },
+      {
+        "title": "构造召回请求体",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.050849,
+        "total_tokens": null
+      },
+      {
+        "title": "取记忆与酒馆设定",
+        "node_type": "http-request",
+        "status": "succeeded",
+        "elapsed_time": 0.037433,
+        "total_tokens": null
+      },
+      {
+        "title": "解析召回结果",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.069192,
+        "total_tokens": null
+      },
+      {
+        "title": "阿九调酒",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.426013,
+        "total_tokens": 287
+      },
+      {
+        "title": "抽取可记的事",
+        "node_type": "llm",
+        "status": "succeeded",
+        "elapsed_time": 0.778852,
+        "total_tokens": 219
+      },
+      {
+        "title": "解析记忆 JSON",
+        "node_type": "code",
+        "status": "succeeded",
+        "elapsed_time": 0.05974,
+        "total_tokens": null
+      },
+      {
+        "title": "要不要写入记忆",
+        "node_type": "if-else",
+        "status": "succeeded",
+        "elapsed_time": 0.00014,
+        "total_tokens": null
+      },
+      {
+        "title": "回复",
+        "node_type": "answer",
+        "status": "succeeded",
+        "elapsed_time": 0.000136,
+        "total_tokens": null
+      }
+    ],
+    "event_names": [
+      "workflow_started",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "node_started",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "message",
+      "node_finished",
+      "node_started",
+      "node_finished",
+      "message_end",
+      "workflow_finished"
+    ]
+  }
+]

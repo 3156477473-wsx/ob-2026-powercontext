@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "user_id": "老周",
+  "embed_mode": "local",
+  "memory_count": 1,
+  "lore_count": 3,
+  "memory_block": "- 我叫老周，做审计的，喜欢苦一点的酒。",
+  "memories": [
+    {
+      "fact": "我叫老周，做审计的，喜欢苦一点的酒。",
+      "created_at": "2026-11-07T13:56:03.033Z",
+      "distance": 0.0328
+    }
+  ]
+}
